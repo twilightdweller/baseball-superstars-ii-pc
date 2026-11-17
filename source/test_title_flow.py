@@ -1,3 +1,4 @@
+from native_test_library import load
 import sys,ctypes,struct,random
 from elftools.elf.elffile import ELFFile
 from unicorn import Uc,UC_ARCH_ARM,UC_MODE_THUMB,UC_HOOK_CODE
@@ -24,7 +25,7 @@ def hook(u,a,size,data):
  if a==0x8f590:
   calls.append('time');u.reg_write(UC_ARM_REG_R0,now&0xffffffff);u.reg_write(UC_ARM_REG_R1,now>>32);u.reg_write(UC_ARM_REG_PC,u.reg_read(UC_ARM_REG_LR))
 u.hook_add(UC_HOOK_CODE,hook)
-n=ctypes.CDLL('/tmp/bs2-title-flow.so');n.bs2_title_tick.argtypes=[ctypes.c_void_p,ctypes.c_uint64]
+n=load('bs2-title-flow');n.bs2_title_tick.argtypes=[ctypes.c_void_p,ctypes.c_uint64]
 count=0
 for state in [0,100]:
  for auto in [0,1]:

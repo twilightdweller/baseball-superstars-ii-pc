@@ -1,3 +1,4 @@
+from native_test_library import load
 import ctypes,struct,random,sys
 from elftools.elf.elffile import ELFFile
 from unicorn import Uc,UC_ARCH_ARM,UC_MODE_THUMB
@@ -7,7 +8,7 @@ with open(sys.argv[1],'rb') as f:
  e=ELFFile(f)
  for p in e.iter_segments():
   if p['p_type']=='PT_LOAD':u.mem_write(p['p_vaddr'],p.data())
-n=ctypes.CDLL('/tmp/bs2-state.so')
+n=load('bs2-state')
 r=random.Random(42)
 funcs=[('bs2_state_init',0xd1441),('bs2_state_reserve',0xd1639),('bs2_state_cancel',0xd1645),('bs2_state_check',0xd1461)]
 for name,addr in funcs:

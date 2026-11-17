@@ -1,7 +1,8 @@
+from native_test_library import load
 import ctypes,random,struct,sys
 # Reuse the original ELF-loading test harness. It defines u and call.
 exec(open(__file__.replace('test_native.py','check_original.py')).read())
-n=ctypes.CDLL('/tmp/bs2-currency.so')
+n=load('bs2-currency')
 for name in ['bs2_checksum','bs2_set','bs2_get','bs2_add','bs2_cheat_grant']:
  getattr(n,name).restype=ctypes.c_uint32
 n.bs2_set.argtypes=[ctypes.c_uint32]

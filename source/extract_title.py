@@ -1,6 +1,7 @@
+from native_test_library import load
 import zipfile,zlib,struct,ctypes,pathlib,sys
 from PIL import Image
-lib=ctypes.CDLL('/tmp/bs2-graphics.so')
+lib=load('bs2-graphics')
 lib.bs2_blit.argtypes=[ctypes.POINTER(ctypes.c_uint16),ctypes.c_size_t,ctypes.c_void_p,ctypes.c_size_t,ctypes.POINTER(ctypes.c_uint16),ctypes.c_size_t,ctypes.c_uint]
 def frames(b):
  assert b[:4]==b'PZX\1'

@@ -1,5 +1,6 @@
+from native_test_library import load
 import ctypes,struct
-s=ctypes.CDLL('/tmp/bs2-state.so');t=ctypes.CDLL('/tmp/bs2-title-flow.so')
+s=load('bs2-state');t=load('bs2-title-flow')
 s.bs2_state_check.argtypes=[ctypes.c_void_p];t.bs2_title_tick.argtypes=[ctypes.c_void_p,ctypes.c_uint64]
 obj=(ctypes.c_uint8*512)()
 def put(off,value):struct.pack_into('<I',obj,off,value)
