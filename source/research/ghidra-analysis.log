@@ -1,0 +1,99 @@
+openjdk version "17.0.21" 2026-10-20
+OpenJDK Runtime Environment Temurin-17.0.21+9 (build 17.0.21+9)
+OpenJDK 64-Bit Server VM Temurin-17.0.21+9 (build 17.0.21+9, mixed mode)
+INFO  Using log config file: jar:file:/tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /root/.ghidra/.ghidra_11.0.3_PUBLIC/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /root/.ghidra/.ghidra_11.0.3_PUBLIC/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (2316 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (SSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (ApplicationTrustManagerFactory)  
+INFO  Starting cache cleanup: /tmp/root-Ghidra/fscache2 (FileCacheMaintenanceDaemon)  
+INFO  Finished cache cleanup, estimated storage used: 0 (FileCacheMaintenanceDaemon)  
+INFO  HEADLESS Script Paths:
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Processors/Atmel/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Processors/PIC/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Debug/Debugger/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Processors/DATA/ghidra_scripts
+    /workspace/scratch/b2496ca7668c/bs2-native/tools/ghidra
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Processors/JVM/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Debug/Debugger-agent-dbgmodel-traceloader/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Features/BSim/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Features/Base/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Processors/8051/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Features/VersionTracking/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Features/FileFormats/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Features/Python/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Debug/Debugger-agent-frida/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Features/FunctionID/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Features/Decompiler/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Features/PDB/ghidra_scripts
+    /tmp/bs2-tools/ghidra_11.0.3_PUBLIC/Ghidra/Features/BytePatterns/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Creating project: /tmp/bs2-tools/projects/BS2 (HeadlessAnalyzer)  
+INFO  Creating project: /tmp/bs2-tools/projects/BS2 (DefaultProject)  
+INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
+INFO       project: /tmp/bs2-tools/projects/BS2 (HeadlessAnalyzer)  
+INFO  IMPORTING: file:///tmp/baseball-game.so (HeadlessAnalyzer)  
+INFO  Using Loader: Executable and Linking Format (ELF) (AutoImporter)  
+INFO  Using Language/Compiler: ARM:LE:32:v8:default (AutoImporter)  
+INFO  IMPORTING: Loaded 0 additional files (HeadlessAnalyzer)  
+INFO  SCRIPT: /workspace/scratch/b2496ca7668c/bs2-native/tools/ghidra/PrepareBS2.java (HeadlessAnalyzer)  
+INFO  ANALYZING all memory and code: file:///tmp/baseball-game.so (HeadlessAnalyzer)  
+WARN  Decompiling 000ec264, pcode error at 000ece16: Unable to resolve constructor at 000ece16 (DecompileCallback)  
+WARN  Decompiling 0014816c, pcode error at 001493ee: Unable to resolve constructor at 001493ee (DecompileCallback)  
+WARN  Decompiling 0016e7dc, pcode error at 0016f24a: Unable to resolve constructor at 0016f24a (DecompileCallback)  
+WARN  Decompiling 00170b90, pcode error at 001715ba: Unable to resolve constructor at 001715ba (DecompileCallback)  
+WARN  Decompiling 00170e36, pcode error at 001715ba: Unable to resolve constructor at 001715ba (DecompileCallback)  
+WARN  Decompiling 001b8448, pcode error at 001b8f9a: Unable to resolve constructor at 001b8f9a (DecompileCallback)  
+INFO  Packed database cache: /tmp/root-Ghidra/packed-db-cache (PackedDatabaseCache)  
+INFO  Applied data type archive: generic_clib (ApplyDataArchiveAnalyzer)  
+WARN  Decompiling 001b8448, pcode error at 001b8f9a: Unable to resolve constructor at 001b8f9a (DecompileCallback)  
+WARN  Decompiling 000da504, pcode error at 000da660: Unable to resolve constructor at 000da660 (DecompileCallback)  
+WARN  Decompiling 000f3538, pcode error at 000f3ffe: Unable to resolve constructor at 000f3ffe (DecompileCallback)  
+WARN  Decompiling 000f8c9c, pcode error at 000f9afe: Unable to resolve constructor at 000f9afe (DecompileCallback)  
+WARN  Decompiling 0016205c, pcode error at 00162a6a: Failed to resolve varnode <thv_Qd1>, index=11 (DecompileCallback)  
+WARN  Decompiling 00137a04, pcode error at 00138452: Failed to resolve varnode <thv_Qm1>, index=9 (DecompileCallback)  
+INFO  -----------------------------------------------------
+    ARM Constant Reference Analyzer           39.932 secs
+    ARM Symbol                                 0.042 secs
+    Apply Data Archives                        1.197 secs
+    Call Convention ID                        31.038 secs
+    Call-Fixup Installer                       0.579 secs
+    Create Address Tables                      0.199 secs
+    Create Address Tables - One Time           0.233 secs
+    Create Function                            1.211 secs
+    Data Reference                             0.794 secs
+    Decompiler Switch Analysis                23.945 secs
+    Demangler GNU                              4.777 secs
+    Disassemble Entry Points                  48.236 secs
+    Embedded Media                             0.073 secs
+    External Entry References                  0.065 secs
+    Function Start Pre Search                  0.060 secs
+    Function Start Search                      0.779 secs
+    Function Start Search After Code           0.859 secs
+    Function Start Search After Data           0.840 secs
+    Non-Returning Functions - Known            0.054 secs
+    Reference                                  0.905 secs
+    Shared Return Calls                        0.862 secs
+    Stack                                     22.341 secs
+    Subroutine References                      0.956 secs
+-----------------------------------------------------
+     Total Time   179 secs
+-----------------------------------------------------
+ (AutoAnalysisManager)  
+ERROR REPORT: Analysis timed out at 180 seconds. Processing not completed for file: file:///tmp/baseball-game.so (HeadlessAnalyzer)  
+INFO  SCRIPT: /workspace/scratch/b2496ca7668c/bs2-native/tools/ghidra/ExportBS2.java (HeadlessAnalyzer)  
+WARN  Decompiling 0016b730, pcode error at 0016c0a4: Unable to resolve constructor at 0016c0a4 (DecompileCallback)  
+WARN  Decompiling 0016b730, pcode error at 0016c0a4: Unable to resolve constructor at 0016c0a4 (DecompileCallback)  
+INFO  ExportBS2.java> EXPORTED 224 functions (GhidraScript)  
+INFO  ANALYZING changes made by post scripts: file:///tmp/baseball-game.so (HeadlessAnalyzer)  
+INFO  REPORT: Post-analysis succeeded for file: file:///tmp/baseball-game.so (HeadlessAnalyzer)  
+INFO  REPORT: Save succeeded for: /baseball-game.so (BS2:/baseball-game.so) (HeadlessAnalyzer)  
+INFO  REPORT: Import succeeded (HeadlessAnalyzer)  

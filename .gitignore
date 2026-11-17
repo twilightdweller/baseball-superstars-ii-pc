@@ -1,0 +1,9 @@
+*.apk
+*.exe
+*.dll
+*.lib
+*.exp
+*.obj
+__pycache__/
+build/
+.venv/
