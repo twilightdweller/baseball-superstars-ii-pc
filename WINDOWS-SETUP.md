@@ -1,5 +1,16 @@
 # Windows setup and verification, 2026-11-17
 
+## Update after dependency installation
+
+The user installed pyelftools 0.33 and Unicorn 2.1.4. All original baseline
+checks now pass on Windows with MSVC, including all 11 previously blocked ARM
+scripts. The failure details below document the initial setup attempt only.
+The runner also builds and tests the pitch-rule additions described in
+source/CHECKPOINT-10.md. All checks passed after those additions.
+
+The six new helpers passed 4,576 comparisons with original ARM. There is still
+no complete at-bat, and no GUI or sanitizer verification is claimed.
+
 ## Current state
 
 Read CHECKPOINT-9.md, CHECKPOINT-4 through CHECKPOINT-8, and source/README.md
