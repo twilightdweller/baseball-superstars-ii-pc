@@ -72,6 +72,7 @@ def main():
         'pitch-path': ['pitch_path', 'pitch_curve', 'projection', 'pitch_scene'],
         'camera': ['camera', 'projection'],
         'pitch-rules': ['pitch_rules'],
+        'pitch-flow': ['pitch_flow'],
     }
     for name, sources in libraries.items():
         compile_target('bs2-' + name, ['src/' + item + '.c' for item in sources], dll=True)
@@ -103,7 +104,8 @@ def main():
     }
     for test, library in [('test_pitch_curve', 'pitch-curve'), ('test_cardinal', 'pitch-curve'),
                           ('test_projection', 'projection'), ('test_pitch_path', 'pitch-path'),
-                          ('test_camera', 'camera'), ('test_pitch_rules', 'pitch-rules')]:
+                          ('test_camera', 'camera'), ('test_pitch_rules', 'pitch-rules'),
+                          ('test_pitch_flow', 'pitch-flow')]:
         tests[test] = [str(original), str(BUILD / ('bs2-' + library + '.dll'))]
     for test, arguments in tests.items():
         run(test, [sys.executable, test + '.py', *arguments])

@@ -1,0 +1,149 @@
+_ZN11CBBGFlowMgr21NextStateAtPitchJudgeEv
+Microsoft (R) COFF/PE Dumper Version 14.43.34808.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file C:\Users\hazii\AppData\Local\Packages\sandbox.{f866e342-3ab5-4103-ab68-004e4730c201}\AC\Temp\tmppl1y_oxt\function.obj
+
+File Type: COFF OBJECT
+
+  000CBFE8: B5F8      push        {r3-r7,lr}
+  000CBFEA: 24BA      movs        r4,#0xBA
+  000CBFEC: 0064      lsls        r4,r4,#1
+  000CBFEE: 4E42      ldr         r6,000CC0F8
+  000CBFF0: 1C05      adds        r5,r0,#0
+  000CBFF2: 5900      ldr         r0,[r0,r4]
+  000CBFF4: 447E      add         r6,r6,pc
+  000CBFF6: 2701      movs        r7,#1
+  000CBFF8: 57C7      ldrsb       r7,[r0,r7]
+  000CBFFA: F00B FFCD bl          000D7F98 ; _ZN12CBBGPlayData10IsGameOverEv
+  000CBFFE: 2800      cmp         r0,#0
+  000CC000: D11B      bne         000CC03A
+  000CC002: 592B      ldr         r3,[r5,r4]
+  000CC004: 2201      movs        r2,#1
+  000CC006: 569A      ldrsb       r2,[r3,r2]
+  000CC008: 2A07      cmp         r2,#7
+  000CC00A: D02C      beq         000CC066
+  000CC00C: 2206      movs        r2,#6
+  000CC00E: 569A      ldrsb       r2,[r3,r2]
+  000CC010: 2A02      cmp         r2,#2
+  000CC012: DC12      bgt         000CC03A
+  000CC014: 7ADB      ldrb        r3,[r3,#0xB]
+  000CC016: 061B      lsls        r3,r3,#0x18
+  000CC018: 161B      asrs        r3,r3,#0x18
+  000CC01A: 2B05      cmp         r3,#5
+  000CC01C: D01C      beq         000CC058
+  000CC01E: 2B05      cmp         r3,#5
+  000CC020: DC16      bgt         000CC050
+  000CC022: 2B03      cmp         r3,#3
+  000CC024: DB16      blt         000CC054
+  000CC026: 3F05      subs        r7,#5
+  000CC028: 2418      movs        r4,#0x18
+  000CC02A: 2F01      cmp         r7,#1
+  000CC02C: D80E      bhi         000CC04C
+  000CC02E: 23C2      movs        r3,#0xC2
+  000CC030: 005B      lsls        r3,r3,#1
+  000CC032: 58E8      ldr         r0,[r5,r3]
+  000CC034: F002 F822 bl          000CE07C ; _ZN14CBBGMissionMgr16ChkGoalCompletedEv
+  000CC038: E008      b           000CC04C
+  000CC03A: 23BC      movs        r3,#0xBC
+  000CC03C: 005B      lsls        r3,r3,#1
+  000CC03E: 58E8      ldr         r0,[r5,r3]
+  000CC040: F7FA FC22 bl          000C6888 ; _ZN17CBBGStatisticsMgr9ProcJudgeEv
+  000CC044: 2419      movs        r4,#0x19
+  000CC046: 3F05      subs        r7,#5
+  000CC048: 2F01      cmp         r7,#1
+  000CC04A: D9F0      bls         000CC02E
+  000CC04C: 1C20      adds        r0,r4,#0
+  000CC04E: BDF8      pop         {r3-r7,pc}
+  000CC050: 2B0D      cmp         r3,#0xD
+  000CC052: D001      beq         000CC058
+  000CC054: 2410      movs        r4,#0x10
+  000CC056: E7F6      b           000CC046
+  000CC058: 23BC      movs        r3,#0xBC
+  000CC05A: 005B      lsls        r3,r3,#1
+  000CC05C: 58E8      ldr         r0,[r5,r3]
+  000CC05E: F7FA FC13 bl          000C6888 ; _ZN17CBBGStatisticsMgr9ProcJudgeEv
+  000CC062: 240E      movs        r4,#0xE
+  000CC064: E7EF      b           000CC046
+  000CC066: 2227      movs        r2,#0x27
+  000CC068: 5C9A      ldrb        r2,[r3,r2]
+  000CC06A: 4694      mov         r12,r2
+  000CC06C: 223A      movs        r2,#0x3A
+  000CC06E: 5C9A      ldrb        r2,[r3,r2]
+  000CC070: 2A00      cmp         r2,#0
+  000CC072: D002      beq         000CC07A
+  000CC074: 2239      movs        r2,#0x39
+  000CC076: 5498      strb        r0,[r3,r2]
+  000CC078: 592B      ldr         r3,[r5,r4]
+  000CC07A: 223B      movs        r2,#0x3B
+  000CC07C: 5C98      ldrb        r0,[r3,r2]
+  000CC07E: 213A      movs        r1,#0x3A
+  000CC080: 2400      movs        r4,#0
+  000CC082: 5458      strb        r0,[r3,r1]
+  000CC084: 23BA      movs        r3,#0xBA
+  000CC086: 005B      lsls        r3,r3,#1
+  000CC088: 58E8      ldr         r0,[r5,r3]
+  000CC08A: 5484      strb        r4,[r0,r2]
+  000CC08C: 4662      mov         r2,r12
+  000CC08E: 2A01      cmp         r2,#1
+  000CC090: DD18      ble         000CC0C4
+  000CC092: 58EA      ldr         r2,[r5,r3]
+  000CC094: 2127      movs        r1,#0x27
+  000CC096: 5C50      ldrb        r0,[r2,r1]
+  000CC098: 3801      subs        r0,#1
+  000CC09A: 5450      strb        r0,[r2,r1]
+  000CC09C: 2133      movs        r1,#0x33
+  000CC09E: 5C50      ldrb        r0,[r2,r1]
+  000CC0A0: 3001      adds        r0,#1
+  000CC0A2: 5450      strb        r0,[r2,r1]
+  000CC0A4: 58EB      ldr         r3,[r5,r3]
+  000CC0A6: 2238      movs        r2,#0x38
+  000CC0A8: 4814      ldr         r0,000CC0FC
+  000CC0AA: 5C99      ldrb        r1,[r3,r2]
+  000CC0AC: 1836      adds        r6,r6,r0
+  000CC0AE: 0088      lsls        r0,r1,#2
+  000CC0B0: 1836      adds        r6,r6,r0
+  000CC0B2: 2434      movs        r4,#0x34
+  000CC0B4: 5F18      ldrsh       r0,[r3,r4]
+  000CC0B6: 69B4      ldr         r4,[r6,#0x18]
+  000CC0B8: 4284      cmp         r4,r0
+  000CC0BA: DCCB      bgt         000CC054
+  000CC0BC: 3101      adds        r1,#1
+  000CC0BE: 5499      strb        r1,[r3,r2]
+  000CC0C0: 240E      movs        r4,#0xE
+  000CC0C2: E7C0      b           000CC046
+  000CC0C4: 58EA      ldr         r2,[r5,r3]
+  000CC0C6: 203D      movs        r0,#0x3D
+  000CC0C8: 5C14      ldrb        r4,[r2,r0]
+  000CC0CA: 2C00      cmp         r4,#0
+  000CC0CC: D011      beq         000CC0F2
+  000CC0CE: 263E      movs        r6,#0x3E
+  000CC0D0: 5D94      ldrb        r4,[r2,r6]
+  000CC0D2: 2C00      cmp         r4,#0
+  000CC0D4: D10D      bne         000CC0F2
+  000CC0D6: 5454      strb        r4,[r2,r1]
+  000CC0D8: 58E9      ldr         r1,[r5,r3]
+  000CC0DA: 2239      movs        r2,#0x39
+  000CC0DC: 548C      strb        r4,[r1,r2]
+  000CC0DE: 58EA      ldr         r2,[r5,r3]
+  000CC0E0: 2101      movs        r1,#1
+  000CC0E2: 5591      strb        r1,[r2,r6]
+  000CC0E4: 58EB      ldr         r3,[r5,r3]
+  000CC0E6: 2227      movs        r2,#0x27
+  000CC0E8: 5C19      ldrb        r1,[r3,r0]
+  000CC0EA: 5499      strb        r1,[r3,r2]
+  000CC0EC: 2233      movs        r2,#0x33
+  000CC0EE: 5C99      ldrb        r1,[r3,r2]
+  000CC0F0: E7E4      b           000CC0BC
+  000CC0F2: 241A      movs        r4,#0x1A
+  000CC0F4: E7A7      b           000CC046
+  000CC0F6: 46C0      mov         r8,r8
+  000CC0F8: F6D0
+  000CC0FA: 0011      movs        r1,r2
+  000CC0FC: 8FAC      ldrh        r4,[r5,#0x3C]
+  000CC0FE: FFFD
+
+  Summary
+
+         118 .text

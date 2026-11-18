@@ -1,0 +1,147 @@
+_ZN11CBBGGameRun32EVENT_HANDLER_GSTATE_PITCH_JUDGEEv
+Microsoft (R) COFF/PE Dumper Version 14.43.34808.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file C:\Users\hazii\AppData\Local\Packages\sandbox.{f866e342-3ab5-4103-ab68-004e4730c201}\AC\Temp\tmpvx25cvks\function.obj
+
+File Type: COFF OBJECT
+
+  00169134: B570      push        {r4-r6,lr}
+  00169136: 4C42      ldr         r4,00169240
+  00169138: 4B42      ldr         r3,00169244
+  0016913A: B082      sub         sp,sp,#8
+  0016913C: 447C      add         r4,r4,pc
+  0016913E: 58E3      ldr         r3,[r4,r3]
+  00169140: 1C05      adds        r5,r0,#0
+  00169142: 681B      ldr         r3,[r3]
+  00169144: 7ADB      ldrb        r3,[r3,#0xB]
+  00169146: 061B      lsls        r3,r3,#0x18
+  00169148: 161B      asrs        r3,r3,#0x18
+  0016914A: 2B05      cmp         r3,#5
+  0016914C: D049      beq         001691E2
+  0016914E: 2B03      cmp         r3,#3
+  00169150: D047      beq         001691E2
+  00169152: 220F      movs        r2,#0xF
+  00169154: 2B04      cmp         r3,#4
+  00169156: D044      beq         001691E2
+  00169158: 69E9      ldr         r1,[r5,#0x1C]
+  0016915A: 428A      cmp         r2,r1
+  0016915C: DC36      bgt         001691CC
+  0016915E: 4A3A      ldr         r2,00169248
+  00169160: 58A2      ldr         r2,[r4,r2]
+  00169162: 6811      ldr         r1,[r2]
+  00169164: 22C0      movs        r2,#0xC0
+  00169166: 588A      ldr         r2,[r1,r2]
+  00169168: 2A08      cmp         r2,#8
+  0016916A: D001      beq         00169170
+  0016916C: 2B04      cmp         r3,#4
+  0016916E: D049      beq         00169204
+  00169170: 23FC      movs        r3,#0xFC
+  00169172: 005B      lsls        r3,r3,#1
+  00169174: 58E8      ldr         r0,[r5,r3]
+  00169176: F762 FF37 bl          000CBFE8 ; _ZN11CBBGFlowMgr21NextStateAtPitchJudgeEv
+  0016917A: 4B34      ldr         r3,0016924C
+  0016917C: 50E8      str         r0,[r5,r3]
+  0016917E: 1C28      adds        r0,r5,#0
+  00169180: F7FC FFB0 bl          001660E4 ; _ZN11CBBGGameRun16CheckGameMissionEv
+  00169184: 4B31      ldr         r3,0016924C
+  00169186: 58EB      ldr         r3,[r5,r3]
+  00169188: 2B10      cmp         r3,#0x10
+  0016918A: D006      beq         0016919A
+  0016918C: 2B18      cmp         r3,#0x18
+  0016918E: D004      beq         0016919A
+  00169190: 2B1E      cmp         r3,#0x1E
+  00169192: D002      beq         0016919A
+  00169194: 1C28      adds        r0,r5,#0
+  00169196: F7FB FFDD bl          00165154 ; _ZN11CBBGGameRun17CheckAutoSimulateEv
+  0016919A: 23A0      movs        r3,#0xA0
+  0016919C: 009B      lsls        r3,r3,#2
+  0016919E: 58EE      ldr         r6,[r5,r3]
+  001691A0: 2E00      cmp         r6,#0
+  001691A2: D020      beq         001691E6
+  001691A4: 2385      movs        r3,#0x85
+  001691A6: 009B      lsls        r3,r3,#2
+  001691A8: 58E8      ldr         r0,[r5,r3]
+  001691AA: F75A FD5D bl          000C3C68 ; _ZN17CBBGStatisticsMgr21GetBurstMissionResultEv
+  001691AE: 1C01      adds        r1,r0,#0
+  001691B0: 1C30      adds        r0,r6,#0
+  001691B2: F7C2 F893 bl          0012B2DC ; _ZN16CBBGBurstMission14GetBurstResultEi
+  001691B6: 2800      cmp         r0,#0
+  001691B8: D015      beq         001691E6
+  001691BA: 23C6      movs        r3,#0xC6
+  001691BC: 009B      lsls        r3,r3,#2
+  001691BE: 2200      movs        r2,#0
+  001691C0: 1C28      adds        r0,r5,#0
+  001691C2: 50EA      str         r2,[r5,r3]
+  001691C4: 3008      adds        r0,r0,#8
+  001691C6: 211D      movs        r1,#0x1D
+  001691C8: F768 FA36 bl          000D1638 ; _ZN8CBBState12ReserveStateEi
+  001691CC: 4B20      ldr         r3,00169250
+  001691CE: 58E3      ldr         r3,[r4,r3]
+  001691D0: 6818      ldr         r0,[r3]
+  001691D2: 6843      ldr         r3,[r0,#4]
+  001691D4: 2B00      cmp         r3,#0
+  001691D6: D002      beq         001691DE
+  001691D8: 6903      ldr         r3,[r0,#0x10]
+  001691DA: 2B02      cmp         r3,#2
+  001691DC: D00A      beq         001691F4
+  001691DE: B002      add         sp,sp,#8
+  001691E0: BD70      pop         {r4-r6,pc}
+  001691E2: 221F      movs        r2,#0x1F
+  001691E4: E7B8      b           00169158
+  001691E6: 4B19      ldr         r3,0016924C
+  001691E8: 1C28      adds        r0,r5,#0
+  001691EA: 3008      adds        r0,r0,#8
+  001691EC: 58E9      ldr         r1,[r5,r3]
+  001691EE: F768 FA23 bl          000D1638 ; _ZN8CBBState12ReserveStateEi
+  001691F2: E7EB      b           001691CC
+  001691F4: 4B17      ldr         r3,00169254
+  001691F6: 2102      movs        r1,#2
+  001691F8: 2200      movs        r2,#0
+  001691FA: 9300      str         r3,[sp]
+  001691FC: 2305      movs        r3,#5
+  001691FE: F784 FE93 bl          000EDF28 ; _ZN13CBBGScreenMng7SetModeENS_11eScreenModeEjNS_14eWipeDirectionEj
+  00169202: E7EC      b           001691DE
+  00169204: 2163      movs        r1,#0x63
+  00169206: 2000      movs        r0,#0
+  00169208: F76B FEB0 bl          000D4F6C ; _Z7bb_randii
+  0016920C: 2381      movs        r3,#0x81
+  0016920E: 009B      lsls        r3,r3,#2
+  00169210: 1C06      adds        r6,r0,#0
+  00169212: 58E8      ldr         r0,[r5,r3]
+  00169214: F763 F85C bl          000CC2D0 ; _ZN12CBBGEntryMgr12GetCurBatterEv
+  00169218: F76E FADC bl          000D77D4 ; _ZN14CBBGPlayerData5IsAceEv
+  0016921C: 2E13      cmp         r6,#0x13
+  0016921E: DCA7      bgt         00169170
+  00169220: 2800      cmp         r0,#0
+  00169222: D1A5      bne         00169170
+  00169224: 23A0      movs        r3,#0xA0
+  00169226: 009B      lsls        r3,r3,#2
+  00169228: 58E8      ldr         r0,[r5,r3]
+  0016922A: 2800      cmp         r0,#0
+  0016922C: D003      beq         00169236
+  0016922E: F7C1 F927 bl          0012A480 ; _ZN16CBBGBurstMission21IsRunningBurstMissionEv
+  00169232: 2800      cmp         r0,#0
+  00169234: D19C      bne         00169170
+  00169236: 4B05      ldr         r3,0016924C
+  00169238: 221E      movs        r2,#0x1E
+  0016923A: 50EA      str         r2,[r5,r3]
+  0016923C: E79F      b           0016917E
+  0016923E: 46C0      mov         r8,r8
+  00169240: 2588      movs        r5,#0x88
+  00169242: 0008      movs        r0,r1
+  00169244: 04DC      lsls        r4,r3,#0x13
+  00169246: 0000      movs        r0,r0
+  00169248: 044C      lsls        r4,r1,#0x11
+  0016924A: 0000      movs        r0,r0
+  0016924C: 0B18      lsrs        r0,r3,#0xC
+  0016924E: 0000      movs        r0,r0
+  00169250: 07D0      lsls        r0,r2,#0x1F
+  00169252: 0000      movs        r0,r0
+  00169254: 05DC      lsls        r4,r3,#0x17
+  00169256: 0000      movs        r0,r0
+
+  Summary
+
+         124 .text

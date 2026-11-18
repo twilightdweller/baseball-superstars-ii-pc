@@ -1,0 +1,408 @@
+_ZN11CBBGGameRun31INIT_HANDLER_GSTATE_PITCH_JUDGEEv
+Microsoft (R) COFF/PE Dumper Version 14.43.34808.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file C:\Users\hazii\AppData\Local\Packages\sandbox.{f866e342-3ab5-4103-ab68-004e4730c201}\AC\Temp\tmpnmsq8rzg\function.obj
+
+File Type: COFF OBJECT
+
+  00169F2C: B5F0      push        {r4-r7,lr}
+  00169F2E: 465F      mov         r7,r11
+  00169F30: 4656      mov         r6,r10
+  00169F32: 464D      mov         r5,r9
+  00169F34: 4644      mov         r4,r8
+  00169F36: B4F0      push        {r4-r7}
+  00169F38: 4DC3      ldr         r5,0016A248
+  00169F3A: 4AC4      ldr         r2,0016A24C
+  00169F3C: B085      sub         sp,sp,#0x14
+  00169F3E: 447D      add         r5,r5,pc
+  00169F40: 58AB      ldr         r3,[r5,r2]
+  00169F42: 1C04      adds        r4,r0,#0
+  00169F44: 4693      mov         r11,r2
+  00169F46: 681E      ldr         r6,[r3]
+  00169F48: 4699      mov         r9,r3
+  00169F4A: 23A3      movs        r3,#0xA3
+  00169F4C: 009B      lsls        r3,r3,#2
+  00169F4E: 58C3      ldr         r3,[r0,r3]
+  00169F50: 7B9B      ldrb        r3,[r3,#0xE]
+  00169F52: 7433      strb        r3,[r6,#0x10]
+  00169F54: F7FD FB84 bl          00167660 ; _ZN11CBBGGameRun14IsHitByPitcherEv
+  00169F58: 4BBD      ldr         r3,0016A250
+  00169F5A: 74B0      strb        r0,[r6,#0x12]
+  00169F5C: AA02      add         r2,sp,#8
+  00169F5E: 58EB      ldr         r3,[r5,r3]
+  00169F60: 4690      mov         r8,r2
+  00169F62: 2290      movs        r2,#0x90
+  00169F64: 681B      ldr         r3,[r3]
+  00169F66: 4668      mov         r0,sp
+  00169F68: 1D19      adds        r1,r3,#4
+  00169F6A: 589A      ldr         r2,[r3,r2]
+  00169F6C: F74A F896 bl          000B409C ; _ZN8CCLPitch22GetPitchCurveScreenPosEi
+  00169F70: 9B00      ldr         r3,[sp]
+  00169F72: 4642      mov         r2,r8
+  00169F74: 4641      mov         r1,r8
+  00169F76: 9302      str         r3,[sp,#8]
+  00169F78: 9B01      ldr         r3,[sp,#4]
+  00169F7A: 6053      str         r3,[r2,#4]
+  00169F7C: 4BB5      ldr         r3,0016A254
+  00169F7E: 58EB      ldr         r3,[r5,r3]
+  00169F80: 6818      ldr         r0,[r3]
+  00169F82: F72C FF25 bl          00096DD0 ; _ZN12CCLFigureMgr19IntersectStrikeZoneEP12bbtagPoint2D
+  00169F86: 1C07      adds        r7,r0,#0
+  00169F88: 1C20      adds        r0,r4,#0
+  00169F8A: F7FA FCA7 bl          001648DC ; _ZN11CBBGGameRun11IsWildPitchEv
+  00169F8E: 2300      movs        r3,#0
+  00169F90: 76B3      strb        r3,[r6,#0x1A]
+  00169F92: 23F8      movs        r3,#0xF8
+  00169F94: 7637      strb        r7,[r6,#0x18]
+  00169F96: 005B      lsls        r3,r3,#1
+  00169F98: 7670      strb        r0,[r6,#0x19]
+  00169F9A: 4682      mov         r10,r0
+  00169F9C: 1C39      adds        r1,r7,#0
+  00169F9E: 58E0      ldr         r0,[r4,r3]
+  00169FA0: F754 F93A bl          000BE218 ; _ZN14CBBGRuleEngine10PitchJudgeEh
+  00169FA4: 22CC      movs        r2,#0xCC
+  00169FA6: 0093      lsls        r3,r2,#2
+  00169FA8: 4652      mov         r2,r10
+  00169FAA: 1C07      adds        r7,r0,#0
+  00169FAC: 4698      mov         r8,r3
+  00169FAE: 50E0      str         r0,[r4,r3]
+  00169FB0: 2A00      cmp         r2,#0
+  00169FB2: D100      bne         00169FB6
+  00169FB4: E079      b           0016A0AA
+  00169FB6: 2803      cmp         r0,#3
+  00169FB8: D100      bne         00169FBC
+  00169FBA: E076      b           0016A0AA
+  00169FBC: 2804      cmp         r0,#4
+  00169FBE: D100      bne         00169FC2
+  00169FC0: E073      b           0016A0AA
+  00169FC2: F7FF FF71 bl          00169EA8 ; _ZN13CCLDefenseEnv26SetBattingPattern_WildPtchEv
+  00169FC6: 464B      mov         r3,r9
+  00169FC8: 6819      ldr         r1,[r3]
+  00169FCA: 2226      movs        r2,#0x26
+  00169FCC: 2309      movs        r3,#9
+  00169FCE: 548B      strb        r3,[r1,r2]
+  00169FD0: 4AA1      ldr         r2,0016A258
+  00169FD2: 1C20      adds        r0,r4,#0
+  00169FD4: 3008      adds        r0,r0,#8
+  00169FD6: 58AA      ldr         r2,[r5,r2]
+  00169FD8: 6811      ldr         r1,[r2]
+  00169FDA: 22C0      movs        r2,#0xC0
+  00169FDC: 508B      str         r3,[r1,r2]
+  00169FDE: 23EA      movs        r3,#0xEA
+  00169FE0: 009B      lsls        r3,r3,#2
+  00169FE2: 58E2      ldr         r2,[r4,r3]
+  00169FE4: 2106      movs        r1,#6
+  00169FE6: 23BC      movs        r3,#0xBC
+  00169FE8: 50D1      str         r1,[r2,r3]
+  00169FEA: 2118      movs        r1,#0x18
+  00169FEC: F767 FB24 bl          000D1638 ; _ZN8CBBState12ReserveStateEi
+  00169FF0: 4642      mov         r2,r8
+  00169FF2: 58A7      ldr         r7,[r4,r2]
+  00169FF4: 2F05      cmp         r7,#5
+  00169FF6: D100      bne         00169FFA
+  00169FF8: E104      b           0016A204
+  00169FFA: 2F0D      cmp         r7,#0xD
+  00169FFC: D800      bhi         0016A000
+  00169FFE: E074      b           0016A0EA
+  0016A000: 2F00      cmp         r7,#0
+  0016A002: D000      beq         0016A006
+  0016A004: E0A2      b           0016A14C
+  0016A006: 2385      movs        r3,#0x85
+  0016A008: 009B      lsls        r3,r3,#2
+  0016A00A: 58E0      ldr         r0,[r4,r3]
+  0016A00C: F759 FC80 bl          000C3910 ; _ZN17CBBGStatisticsMgr7AtJudgeEv
+  0016A010: 4B92      ldr         r3,0016A25C
+  0016A012: 2609      movs        r6,#9
+  0016A014: 58ED      ldr         r5,[r5,r3]
+  0016A016: 1C32      adds        r2,r6,#0
+  0016A018: 2102      movs        r1,#2
+  0016A01A: 6828      ldr         r0,[r5]
+  0016A01C: F013 FD94 bl          0017DB48 ; _ZN10CBBGResMgr6GetAniE10BBG_RES_IDi
+  0016A020: 2101      movs        r1,#1
+  0016A022: F047 F97F bl          001B1324 ; _ZN9CGxPZxAni4StopEb
+  0016A026: 1C32      adds        r2,r6,#0
+  0016A028: 2102      movs        r1,#2
+  0016A02A: 6828      ldr         r0,[r5]
+  0016A02C: F013 FD8C bl          0017DB48 ; _ZN10CBBGResMgr6GetAniE10BBG_RES_IDi
+  0016A030: 3601      adds        r6,#1
+  0016A032: 2100      movs        r1,#0
+  0016A034: F047 F95E bl          001B12F4 ; _ZN9CGxPZxAni4PlayEb
+  0016A038: 2E0C      cmp         r6,#0xC
+  0016A03A: D1EC      bne         0016A016
+  0016A03C: 4B88      ldr         r3,0016A260
+  0016A03E: 2000      movs        r0,#0
+  0016A040: 58E3      ldr         r3,[r4,r3]
+  0016A042: 69DB      ldr         r3,[r3,#0x1C]
+  0016A044: 691B      ldr         r3,[r3,#0x10]
+  0016A046: 2B00      cmp         r3,#0
+  0016A048: D001      beq         0016A04E
+  0016A04A: 689B      ldr         r3,[r3,#8]
+  0016A04C: 6A18      ldr         r0,[r3,#0x20]
+  0016A04E: 2101      movs        r1,#1
+  0016A050: F047 F968 bl          001B1324 ; _ZN9CGxPZxAni4StopEb
+  0016A054: 4B82      ldr         r3,0016A260
+  0016A056: 2000      movs        r0,#0
+  0016A058: 58E3      ldr         r3,[r4,r3]
+  0016A05A: 69DB      ldr         r3,[r3,#0x1C]
+  0016A05C: 691B      ldr         r3,[r3,#0x10]
+  0016A05E: 2B00      cmp         r3,#0
+  0016A060: D001      beq         0016A066
+  0016A062: 689B      ldr         r3,[r3,#8]
+  0016A064: 6A18      ldr         r0,[r3,#0x20]
+  0016A066: 2100      movs        r1,#0
+  0016A068: F047 F944 bl          001B12F4 ; _ZN9CGxPZxAni4PlayEb
+  0016A06C: 4B7C      ldr         r3,0016A260
+  0016A06E: 2000      movs        r0,#0
+  0016A070: 58E3      ldr         r3,[r4,r3]
+  0016A072: 69DB      ldr         r3,[r3,#0x1C]
+  0016A074: 691B      ldr         r3,[r3,#0x10]
+  0016A076: 2B00      cmp         r3,#0
+  0016A078: D001      beq         0016A07E
+  0016A07A: 689B      ldr         r3,[r3,#8]
+  0016A07C: 6A98      ldr         r0,[r3,#0x28]
+  0016A07E: 2101      movs        r1,#1
+  0016A080: F047 F950 bl          001B1324 ; _ZN9CGxPZxAni4StopEb
+  0016A084: 4B76      ldr         r3,0016A260
+  0016A086: 2000      movs        r0,#0
+  0016A088: 58E3      ldr         r3,[r4,r3]
+  0016A08A: 69DB      ldr         r3,[r3,#0x1C]
+  0016A08C: 691B      ldr         r3,[r3,#0x10]
+  0016A08E: 2B00      cmp         r3,#0
+  0016A090: D001      beq         0016A096
+  0016A092: 689B      ldr         r3,[r3,#8]
+  0016A094: 6A98      ldr         r0,[r3,#0x28]
+  0016A096: 2100      movs        r1,#0
+  0016A098: F047 F92C bl          001B12F4 ; _ZN9CGxPZxAni4PlayEb
+  0016A09C: B005      add         sp,sp,#0x14
+  0016A09E: BC3C      pop         {r2-r5}
+  0016A0A0: 4690      mov         r8,r2
+  0016A0A2: 4699      mov         r9,r3
+  0016A0A4: 46A2      mov         r10,r4
+  0016A0A6: 46AB      mov         r11,r5
+  0016A0A8: BDF0      pop         {r4-r7,pc}
+  0016A0AA: 2324      movs        r3,#0x24
+  0016A0AC: 5CF3      ldrb        r3,[r6,r3]
+  0016A0AE: 2B00      cmp         r3,#0
+  0016A0B0: D0A3      beq         00169FFA
+  0016A0B2: 2306      movs        r3,#6
+  0016A0B4: 56F3      ldrsb       r3,[r6,r3]
+  0016A0B6: 2B01      cmp         r3,#1
+  0016A0B8: DD01      ble         0016A0BE
+  0016A0BA: 2F05      cmp         r7,#5
+  0016A0BC: D01D      beq         0016A0FA
+  0016A0BE: 465A      mov         r2,r11
+  0016A0C0: 58AB      ldr         r3,[r5,r2]
+  0016A0C2: 2226      movs        r2,#0x26
+  0016A0C4: 1C20      adds        r0,r4,#0
+  0016A0C6: 6819      ldr         r1,[r3]
+  0016A0C8: 2305      movs        r3,#5
+  0016A0CA: 3008      adds        r0,r0,#8
+  0016A0CC: 548B      strb        r3,[r1,r2]
+  0016A0CE: 4A62      ldr         r2,0016A258
+  0016A0D0: 58AA      ldr         r2,[r5,r2]
+  0016A0D2: 6811      ldr         r1,[r2]
+  0016A0D4: 22C0      movs        r2,#0xC0
+  0016A0D6: 508B      str         r3,[r1,r2]
+  0016A0D8: 2118      movs        r1,#0x18
+  0016A0DA: F767 FAAD bl          000D1638 ; _ZN8CBBState12ReserveStateEi
+  0016A0DE: 23CC      movs        r3,#0xCC
+  0016A0E0: 009B      lsls        r3,r3,#2
+  0016A0E2: 58E7      ldr         r7,[r4,r3]
+  0016A0E4: 2F0D      cmp         r7,#0xD
+  0016A0E6: D900      bls         0016A0EA
+  0016A0E8: E78A      b           0016A000
+  0016A0EA: 4B5E      ldr         r3,0016A264
+  0016A0EC: 00BA      lsls        r2,r7,#2
+  0016A0EE: 18EB      adds        r3,r5,r3
+  0016A0F0: 589A      ldr         r2,[r3,r2]
+  0016A0F2: 18D3      adds        r3,r2,r3
+  0016A0F4: 469F      mov         pc,r3
+  0016A0F6: 4642      mov         r2,r8
+  0016A0F8: 50A7      str         r7,[r4,r2]
+  0016A0FA: 23AD      movs        r3,#0xAD
+  0016A0FC: 009B      lsls        r3,r3,#2
+  0016A0FE: 58E3      ldr         r3,[r4,r3]
+  0016A100: 2B16      cmp         r3,#0x16
+  0016A102: D007      beq         0016A114
+  0016A104: 2385      movs        r3,#0x85
+  0016A106: 009B      lsls        r3,r3,#2
+  0016A108: 58E0      ldr         r0,[r4,r3]
+  0016A10A: 239F      movs        r3,#0x9F
+  0016A10C: 011B      lsls        r3,r3,#4
+  0016A10E: 58E1      ldr         r1,[r4,r3]
+  0016A110: F75B FFC4 bl          000C609C ; _ZN17CBBGStatisticsMgr12SetPitchGageEi
+  0016A114: 2382      movs        r3,#0x82
+  0016A116: 009B      lsls        r3,r3,#2
+  0016A118: 58E0      ldr         r0,[r4,r3]
+  0016A11A: F76E FEBB bl          000D8E94 ; _ZN13CBBGEntryData19GetCurPitcherRecordEv
+  0016A11E: 7843      ldrb        r3,[r0,#1]
+  0016A120: 2B00      cmp         r3,#0
+  0016A122: D06B      beq         0016A1FC
+  0016A124: 4A50      ldr         r2,0016A268
+  0016A126: 2301      movs        r3,#1
+  0016A128: 54A3      strb        r3,[r4,r2]
+  0016A12A: 3201      adds        r2,#1
+  0016A12C: 54A3      strb        r3,[r4,r2]
+  0016A12E: 2381      movs        r3,#0x81
+  0016A130: 009B      lsls        r3,r3,#2
+  0016A132: 58E0      ldr         r0,[r4,r3]
+  0016A134: 2100      movs        r1,#0
+  0016A136: F762 FDD9 bl          000CCCEC ; _ZN12CBBGEntryMgr13RsvNextBatterEh
+  0016A13A: 79B3      ldrb        r3,[r6,#6]
+  0016A13C: 3301      adds        r3,#1
+  0016A13E: 71B3      strb        r3,[r6,#6]
+  0016A140: 23CC      movs        r3,#0xCC
+  0016A142: 009B      lsls        r3,r3,#2
+  0016A144: 58E7      ldr         r7,[r4,r3]
+  0016A146: 2F00      cmp         r7,#0
+  0016A148: D100      bne         0016A14C
+  0016A14A: E75C      b           0016A006
+  0016A14C: 23CC      movs        r3,#0xCC
+  0016A14E: 7337      strb        r7,[r6,#0xC]
+  0016A150: 1C20      adds        r0,r4,#0
+  0016A152: 009B      lsls        r3,r3,#2
+  0016A154: 58E2      ldr         r2,[r4,r3]
+  0016A156: 4945      ldr         r1,0016A26C
+  0016A158: 2300      movs        r3,#0
+  0016A15A: 3060      adds        r0,r0,#0x60
+  0016A15C: F765 FA42 bl          000CF5E4 ; _ZN6CBBEvt9SendEventEiiPv
+  0016A160: E751      b           0016A006
+  0016A162: 2381      movs        r3,#0x81
+  0016A164: 009B      lsls        r3,r3,#2
+  0016A166: 58E0      ldr         r0,[r4,r3]
+  0016A168: 2100      movs        r1,#0
+  0016A16A: F762 FDBF bl          000CCCEC ; _ZN12CBBGEntryMgr13RsvNextBatterEh
+  0016A16E: 465A      mov         r2,r11
+  0016A170: 58AB      ldr         r3,[r5,r2]
+  0016A172: 2226      movs        r2,#0x26
+  0016A174: 6819      ldr         r1,[r3]
+  0016A176: 2303      movs        r3,#3
+  0016A178: 548B      strb        r3,[r1,r2]
+  0016A17A: 4A37      ldr         r2,0016A258
+  0016A17C: 58AA      ldr         r2,[r5,r2]
+  0016A17E: 6811      ldr         r1,[r2]
+  0016A180: 22C0      movs        r2,#0xC0
+  0016A182: 508B      str         r3,[r1,r2]
+  0016A184: 23CC      movs        r3,#0xCC
+  0016A186: 009B      lsls        r3,r3,#2
+  0016A188: 58E7      ldr         r7,[r4,r3]
+  0016A18A: E739      b           0016A000
+  0016A18C: 7973      ldrb        r3,[r6,#5]
+  0016A18E: 3301      adds        r3,#1
+  0016A190: 7173      strb        r3,[r6,#5]
+  0016A192: 23CC      movs        r3,#0xCC
+  0016A194: 009B      lsls        r3,r3,#2
+  0016A196: 58E7      ldr         r7,[r4,r3]
+  0016A198: E732      b           0016A000
+  0016A19A: 23AD      movs        r3,#0xAD
+  0016A19C: 009B      lsls        r3,r3,#2
+  0016A19E: 58E3      ldr         r3,[r4,r3]
+  0016A1A0: 2B16      cmp         r3,#0x16
+  0016A1A2: D007      beq         0016A1B4
+  0016A1A4: 2385      movs        r3,#0x85
+  0016A1A6: 009B      lsls        r3,r3,#2
+  0016A1A8: 58E0      ldr         r0,[r4,r3]
+  0016A1AA: 239F      movs        r3,#0x9F
+  0016A1AC: 011B      lsls        r3,r3,#4
+  0016A1AE: 58E1      ldr         r1,[r4,r3]
+  0016A1B0: F75B FF74 bl          000C609C ; _ZN17CBBGStatisticsMgr12SetPitchGageEi
+  0016A1B4: 23E5      movs        r3,#0xE5
+  0016A1B6: 009B      lsls        r3,r3,#2
+  0016A1B8: 58E3      ldr         r3,[r4,r3]
+  0016A1BA: 2B07      cmp         r3,#7
+  0016A1BC: D0E2      beq         0016A184
+  0016A1BE: 7933      ldrb        r3,[r6,#4]
+  0016A1C0: 3301      adds        r3,#1
+  0016A1C2: 7133      strb        r3,[r6,#4]
+  0016A1C4: 23CC      movs        r3,#0xCC
+  0016A1C6: 009B      lsls        r3,r3,#2
+  0016A1C8: 58E7      ldr         r7,[r4,r3]
+  0016A1CA: E719      b           0016A000
+  0016A1CC: 7973      ldrb        r3,[r6,#5]
+  0016A1CE: 2100      movs        r1,#0
+  0016A1D0: 3301      adds        r3,#1
+  0016A1D2: 7173      strb        r3,[r6,#5]
+  0016A1D4: 2381      movs        r3,#0x81
+  0016A1D6: 009B      lsls        r3,r3,#2
+  0016A1D8: 58E0      ldr         r0,[r4,r3]
+  0016A1DA: F762 FD87 bl          000CCCEC ; _ZN12CBBGEntryMgr13RsvNextBatterEh
+  0016A1DE: 465A      mov         r2,r11
+  0016A1E0: 58AB      ldr         r3,[r5,r2]
+  0016A1E2: 2226      movs        r2,#0x26
+  0016A1E4: 6819      ldr         r1,[r3]
+  0016A1E6: 2302      movs        r3,#2
+  0016A1E8: 548B      strb        r3,[r1,r2]
+  0016A1EA: 4A1B      ldr         r2,0016A258
+  0016A1EC: 58AA      ldr         r2,[r5,r2]
+  0016A1EE: 6811      ldr         r1,[r2]
+  0016A1F0: 22C0      movs        r2,#0xC0
+  0016A1F2: 508B      str         r3,[r1,r2]
+  0016A1F4: 23CC      movs        r3,#0xCC
+  0016A1F6: 009B      lsls        r3,r3,#2
+  0016A1F8: 58E7      ldr         r7,[r4,r3]
+  0016A1FA: E701      b           0016A000
+  0016A1FC: 4B1C      ldr         r3,0016A270
+  0016A1FE: 2201      movs        r2,#1
+  0016A200: 54E2      strb        r2,[r4,r3]
+  0016A202: E794      b           0016A12E
+  0016A204: 2300      movs        r3,#0
+  0016A206: 7337      strb        r7,[r6,#0xC]
+  0016A208: 2001      movs        r0,#1
+  0016A20A: 50A3      str         r3,[r4,r2]
+  0016A20C: F7F9 FD50 bl          00163CB0 ; _ZN15CCLRunnerAIMain19IsBaseRunnerStayingEi
+  0016A210: 2800      cmp         r0,#0
+  0016A212: D004      beq         0016A21E
+  0016A214: 2306      movs        r3,#6
+  0016A216: 56F3      ldrsb       r3,[r6,r3]
+  0016A218: 2B01      cmp         r3,#1
+  0016A21A: DC00      bgt         0016A21E
+  0016A21C: E76B      b           0016A0F6
+  0016A21E: 2385      movs        r3,#0x85
+  0016A220: 009B      lsls        r3,r3,#2
+  0016A222: 58E0      ldr         r0,[r4,r3]
+  0016A224: F75C F8B6 bl          000C6394 ; _ZN17CBBGStatisticsMgr11AtStrikeOutEv
+  0016A228: 2301      movs        r3,#1
+  0016A22A: 76B3      strb        r3,[r6,#0x1A]
+  0016A22C: 4B11      ldr         r3,0016A274
+  0016A22E: 2201      movs        r2,#1
+  0016A230: 212F      movs        r1,#0x2F
+  0016A232: 58EB      ldr         r3,[r5,r3]
+  0016A234: 4252      rsbs        r2,r2,#0
+  0016A236: 6818      ldr         r0,[r3]
+  0016A238: 2300      movs        r3,#0
+  0016A23A: F71E FA29 bl          00088690 ; _ZN8CGsSound4PlayEiih
+  0016A23E: 23CC      movs        r3,#0xCC
+  0016A240: 009B      lsls        r3,r3,#2
+  0016A242: 58E7      ldr         r7,[r4,r3]
+  0016A244: E6D9      b           00169FFA
+  0016A246: 46C0      mov         r8,r8
+  0016A248: 1786      asrs        r6,r0,#0x1E
+  0016A24A: 0008      movs        r0,r1
+  0016A24C: 04DC      lsls        r4,r3,#0x13
+  0016A24E: 0000      movs        r0,r0
+  0016A250: 0298      lsls        r0,r3,#0xA
+  0016A252: 0000      movs        r0,r0
+  0016A254: 0A3C      lsrs        r4,r7,#8
+  0016A256: 0000      movs        r0,r0
+  0016A258: 044C      lsls        r4,r1,#0x11
+  0016A25A: 0000      movs        r0,r0
+  0016A25C: 0760      lsls        r0,r4,#0x1D
+  0016A25E: 0000      movs        r0,r0
+  0016A260: 0A28      lsrs        r0,r5,#8
+  0016A262: 0000      movs        r0,r0
+  0016A264: 3CF4      subs        r4,r4,#0xF4
+  0016A266: FFFE
+  0016A268: 1242      asrs        r2,r0,#9
+  0016A26A: 0000      movs        r0,r0
+  0016A26C: 0BBA      lsrs        r2,r7,#0xE
+  0016A26E: 0000      movs        r0,r0
+  0016A270: 1243      asrs        r3,r0,#9
+  0016A272: 0000      movs        r0,r0
+  0016A274: 09D8      lsrs        r0,r3,#7
+  0016A276: 0000      movs        r0,r0
+
+  Summary
+
+         34C .text
