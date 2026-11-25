@@ -14,6 +14,7 @@ ui.EnumWindows.argtypes = [enum_callback, W.LPARAM]
 ui.GetWindowThreadProcessId.argtypes = [W.HWND, C.POINTER(W.DWORD)]
 ui.GetClassNameW.argtypes = [W.HWND, W.LPWSTR, C.c_int]
 ui.GetWindowTextW.argtypes = [W.HWND, W.LPWSTR, C.c_int]
+ui.SendMessageW.argtypes = [W.HWND, W.UINT, W.WPARAM, W.LPARAM]
 ui.PostMessageW.argtypes = [W.HWND, W.UINT, W.WPARAM, W.LPARAM]
 ui.SetWindowPos.argtypes = [W.HWND, W.HWND, C.c_int, C.c_int, C.c_int, C.c_int, W.UINT]
 
@@ -26,7 +27,8 @@ def wait_for(check, description):
         if viewer.poll() is not None:
             raise RuntimeError(f'viewer exited with {viewer.returncode} while waiting for {description}')
         time.sleep(0.025)
-    raise TimeoutError(description)
+    last_title = title() if "hwnd" in globals() else "<window unavailable>"
+    raise TimeoutError(f"{description}. Last window title: {last_title}")
 
 def window():
     hits = []
@@ -85,11 +87,31 @@ def pitch(number, result, score, terminal=False):
     expected = f'BS2 At-Bat | Pitch {number} | {result} | {score} | ' + ('Complete' if terminal else 'Ready')
     wait_for(lambda: title() == expected, expected)
 
+def swing_contact(preset, score="Balls 0, Strikes 0, Outs 0"):
+    # The first curve's judge tick is 15. Send synchronously so message-queue
+    # latency before the delivery does not eat the one-tick timing margin.
+    ui.SendMessageW(hwnd, 0x100, 0x20, 0)
+    time.sleep(0.305)
+    ui.SendMessageW(hwnd, 0x100, ord('X'), 0)
+    wait_for(lambda: f'| Contact | {score} | ' in title() and ' pattern' in title(), 'timed swing selected a batting pattern')
+    build = Path(sys.argv[1]).resolve().parent
+    with Image.open(build / f'swing-{preset}.bmp') as atlas:
+        region = (96, 185, 355, 307)
+        last = atlas.height - 320
+        expected = atlas.crop((region[0], region[1]+last, region[2], region[3]+last))
+        # The zone is drawn on top of the frame. Sample the batter's box.
+        box = (0, 0, 100, 122) if preset == 1 else (178, 0, 259, 122)
+        expected = expected.crop(box).tobytes()
+        wait_for(lambda: capture(hwnd).crop(region).crop(box).tobytes() == expected, 'original swing follow-through')
+    key(0x20)
+    wait_for(lambda: 'Pitch 0 | Ready' in title(), 'fresh count after contact')
+
+
 ui.SetProcessDPIAware()
 startup = subprocess.STARTUPINFO()
 startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 startup.wShowWindow = 0
-viewer = subprocess.Popen([sys.argv[1]], startupinfo=startup)
+viewer = subprocess.Popen([sys.argv[1], '--fixed-seed'], startupinfo=startup)
 try:
     hwnd = wait_for(window, 'viewer window')
     wait_for(lambda: title() == 'BS2 Pitch Motion', 'default curve viewer')
@@ -106,6 +128,7 @@ try:
     key(ord('T'))
     wait_for(lambda: 'Pitch 0' in title(), 'left-handed plate appearance')
     check_art(2, preview=True)
+    swing_contact(2)
     key(ord('T'))
     wait_for(lambda: title() == 'BS2 Pitch Motion', 'return from left-handed appearance')
     key(0x26)
@@ -121,12 +144,40 @@ try:
         key(0x27)
     for i in range(1, 5):
         pitch(i, 'Ball' if i < 4 else 'Walk', f'Balls {i}, Strikes 0, Outs 0', i == 4)
+    key(0x20)
+    wait_for(lambda: 'Pitch 0 | Ready' in title(), 'fresh count after walk')
+    swing_contact(1)
+    for _ in range(6):
+        key(0x27)
+    pitch(1, 'Ball', 'Balls 1, Strikes 0, Outs 0')
+    key(0x20)
+    key(ord('X'))
+    wait_for(lambda: 'Pitch 2 | Swinging strike | Balls 1, Strikes 1, Outs 0 | Ready' in title(), 'miss at 1-0')
+    for _ in range(6):
+        ui.SendMessageW(hwnd, 0x100, 0x25, 0)
+    swing_contact(1, 'Balls 1, Strikes 1, Outs 0')
+    for _ in range(6):
+        key(0x27)
+    for i in range(1, 4):
+        key(0x20)
+        key(ord('X'))
+        key(ord('X'))
+        expected = (f'Pitch {i} | Swinging strike | Balls 0, Strikes {i}, Outs 0 | Ready'
+                    if i < 3 else 'Pitch 3 | Swinging strikeout | Balls 0, Strikes 2, Outs 1 | Complete')
+        wait_for(lambda: expected in title(), expected)
     key(ord('T'))
     wait_for(lambda: title() == 'BS2 Pitch Motion', 'return to curve viewer')
+    key(0x1b)
+    assert viewer.wait(timeout=5) == 0
+    # Exercise the same command-line entry point as Play-At-Bat.cmd.
+    viewer = subprocess.Popen([sys.argv[1], '--at-bat'], startupinfo=startup)
+    hwnd = wait_for(window, 'direct at-bat window')
+    wait_for(lambda: 'Pitch 0 | Ready | Balls 0, Strikes 0, Outs 0' in title(), 'direct at-bat startup')
     key(0x1b)
     assert viewer.wait(timeout=5) == 0
 finally:
     if viewer.poll() is None:
         viewer.kill()
         viewer.wait()
+print('PASS: Both batters made timed contact. The viewer preserved a 1-1 count on contact, handled three misses outside the zone, and opened directly in at-bat mode.')
 print('PASS: Both batting views and at-bat artwork rendered. Windows viewer accepted keyboard input, delivered three called strikes and a four-ball walk, reset, returned to curve view and exited.')

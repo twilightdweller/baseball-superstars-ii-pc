@@ -5,6 +5,7 @@
 #include "pitch_scene.h"
 #include "camera.h"
 #include "taken_pitch.h"
+#include "batting.h"
 #include <string.h>
 #include "pitch_records.h"
 static BS2Point3 path[4099],controls[50];
@@ -13,15 +14,20 @@ static int selected=0,preset=1,frames=0,ready=0;
 static DWORD started;
 static BS2AtBat at_bat;
 static BS2StrikeZone zone;
-enum PitchPhase { AIM, DELIVERY, JUDGMENT, COMPLETE };
+enum PitchPhase { AIM, DELIVERY, JUDGMENT, COMPLETE, CONTACT };
 static enum PitchPhase phase;
 static int taking, aim, pitch_number, last_call;
-static DWORD judge_started;
+static DWORD judge_started, swing_started;
+static int swing_frame = -1, swing_checked, contact_pattern;
+static uint32_t swing_seed;
+static int fixed_practice_seed;
+static BS2Point2 bat_offset;
 static const char *call_name[] = {"Ready", "Called strike", "Ball", "Walk", "", "Called strikeout"};
 
 static void reset_appearance(void) {
  at_bat = (BS2AtBat){0};
  at_bat.play[0x12d] = 9;
+ swing_frame = -1; swing_checked = 0; swing_seed = fixed_practice_seed ? 1u : GetTickCount();
  aim = 0; pitch_number = 0; last_call = 0; phase = AIM;
 }
 
@@ -30,8 +36,8 @@ static void flow_effect(void *context, int effect) { (void)context; (void)effect
 static HDC canvas;
 static HBITMAP bitmap,previous_bitmap;
 static HDC art_dc;
-static HBITMAP fields[2],ball_image;
-enum { FIELD_RIGHT = 101, FIELD_LEFT, PITCH_BALL };
+static HBITMAP fields[2],swings[2],ball_image;
+enum { FIELD_RIGHT = 101, FIELD_LEFT, PITCH_BALL, SWING_RIGHT, SWING_LEFT };
 static HFONT font,previous_font;
 static int px(BS2Point2 p){return p.x/262144;}
 static int py(BS2Point2 p){return p.y/262144;}
@@ -43,18 +49,46 @@ static void replay(void){
  ready=bs2_camera_from_figure(figure,sizeof(figure),preset,&camera)==0 &&
        bs2_pitch_release(figure,sizeof(figure),r->style,preset==0,&spec.release)==0 &&
        bs2_pitch_path(&spec,r->points,controls,path)==0;
- if(taking && ready)ready=bs2_strike_zone(figure,sizeof(figure),&camera,&zone)==0;
+ if(taking && ready)
+  ready=bs2_strike_zone(figure,sizeof(figure),&camera,&zone)==0 &&
+        bs2_batting_offset(figure,sizeof(figure),&camera,&spec.target,&bat_offset)==0;
  frames=r->frames+3;started=GetTickCount();
 }
 static void take_or_restart(void) {
- if(phase==COMPLETE){reset_appearance();replay();return;}
- if(phase==AIM && ready){started=GetTickCount();++pitch_number;phase=DELIVERY;}
+ if(phase==COMPLETE || phase==CONTACT){reset_appearance();replay();return;}
+ if(phase==AIM && ready){
+  swing_frame=-1; swing_checked=0; started=GetTickCount(); ++pitch_number; phase=DELIVERY;
+ }
+}
+
+static void swing(void) {
+ if(phase!=DELIVERY || swing_frame>=0)return;
+ DWORD now=GetTickCount();
+ unsigned tick=(now-started)/20u;
+ if(tick>(unsigned)records[selected].frames)return;
+ swing_frame=(int)tick; swing_started=now;
+}
+
+static const char *pitch_result(void) {
+ if(phase==CONTACT)return "Contact";
+ if(phase==DELIVERY)return swing_frame>=0?"Swing":"In flight";
+ if(swing_frame>=0 && last_call==1)return "Swinging strike";
+ if(swing_frame>=0 && last_call==5)return "Swinging strikeout";
+ return call_name[last_call];
 }
 
 static void update_appearance(void) {
  DWORD now=GetTickCount();
- if(phase==DELIVERY && now-started>=(DWORD)(records[selected].frames-1)*20u){
-  last_call=bs2_take_curve(&at_bat,path,(size_t)frames,&camera,&zone);
+ int tick=(int)((now-started)/20u), judge=records[selected].frames-1;
+ if(phase==DELIVERY && swing_frame>=0 && !swing_checked && tick>swing_frame){
+  swing_checked=1;
+  contact_pattern=bs2_swing_pattern(preset==1,judge,swing_frame,bat_offset,&swing_seed);
+  if(contact_pattern==BS2_INVALID_SWING){ready=0;phase=AIM;return;}
+  at_bat.play[0x11]=(uint8_t)(contact_pattern!=BS2_SWING_MISS);
+  if(at_bat.play[0x11]){phase=CONTACT;return;}
+ }
+ if(phase==DELIVERY && tick>=judge+2){
+  last_call=bs2_judge_unhit_curve(&at_bat,swing_frame>=0,path,(size_t)frames,&camera,&zone);
   if(last_call<1){last_call=0;ready=0;phase=AIM;return;}
   judge_started=now;phase=JUDGMENT;
  }
@@ -65,13 +99,20 @@ static void update_appearance(void) {
  }
 }
 
+static void describe_contact(char *text, size_t size) {
+ static const char *const name[]={"Fly out","Ground out",NULL,"Foul ball",NULL,"Single","Double","Home run"};
+ static const char *const side[]={"",", left",", right"};
+ snprintf(text,size,"%s pattern%s",name[contact_pattern/3],side[contact_pattern%3]);
+}
+
 static void update_title(HWND window) {
- char title[160];
+ char title[180], detail[64]="";
  if(!taking){SetWindowTextA(window,"BS2 Pitch Motion");return;}
- snprintf(title,sizeof(title),"BS2 At-Bat | Pitch %d | %s | Balls %u, Strikes %u, Outs %u%s",
-          pitch_number,phase==DELIVERY?"In flight":call_name[last_call],
+ if(phase==CONTACT)describe_contact(detail,sizeof(detail));
+ snprintf(title,sizeof(title),"BS2 At-Bat | Pitch %d | %s | Balls %u, Strikes %u, Outs %u%s%s%s",
+          pitch_number,pitch_result(),
           (unsigned)at_bat.play[5],(unsigned)at_bat.play[4],(unsigned)at_bat.play[6],
-          phase==COMPLETE?" | Complete":phase==AIM?" | Ready":"");
+          phase==COMPLETE?" | Complete":phase==AIM?" | Ready":"",detail[0]?" | ":"",detail);
  SetWindowTextA(window,title);
 }
 static void label(int x,int y,const char *s,COLORREF color){
@@ -79,8 +120,14 @@ static void label(int x,int y,const char *s,COLORREF color){
  TextOutA(canvas,x,y,s,(int)lstrlenA(s));
 }
 static void render(void){
- HGDIOBJ old_art=SelectObject(art_dc,fields[preset-1]);
- BitBlt(canvas,0,0,480,320,art_dc,0,0,SRCCOPY);
+ int swinging=taking && swing_frame>=0 && phase!=AIM;
+ int source_y=0;
+ if(swinging){
+  int ace=preset==1;
+  source_y=320*(bs2_swing_art_frame(ace,(GetTickCount()-swing_started)/20u)-bs2_swing_art_frame(ace,0));
+ }
+ HGDIOBJ old_art=SelectObject(art_dc,swinging?swings[preset-1]:fields[preset-1]);
+ BitBlt(canvas,0,0,480,320,art_dc,0,source_y,SRCCOPY);
  SelectObject(art_dc,old_art);
  SetBkMode(canvas,OPAQUE);
  SetBkColor(canvas,RGB(18,25,33));
@@ -109,21 +156,25 @@ static void render(void){
   BS2Point2 p;
   if(taking)p=bs2_pitch_screen_pixel(&path[frame],&camera);
   else{bs2_project_point(&p,&path[frame],&camera);p=(BS2Point2){px(p),py(p)};}
-  old_art=SelectObject(art_dc,ball_image);
-  TransparentBlt(canvas,p.x-8,p.y-8,17,17,art_dc,0,0,17,17,RGB(255,0,255));
-  SelectObject(art_dc,old_art);
+  if(!taking || phase!=CONTACT){
+   old_art=SelectObject(art_dc,ball_image);
+   TransparentBlt(canvas,p.x-8,p.y-8,17,17,art_dc,0,0,17,17,RGB(255,0,255));
+   SelectObject(art_dc,old_art);
+  }
  }
  if(taking){
   char info[180];
   snprintf(info,sizeof(info),"Pitch %d    Balls %u    Strikes %u    Outs %u",pitch_number,
            (unsigned)at_bat.play[5],(unsigned)at_bat.play[4],(unsigned)at_bat.play[6]);
   label(12,8,info,RGB(235,241,246));
-  snprintf(info,sizeof(info),"%s    Target offset %+d",phase==DELIVERY?"Pitch in flight":call_name[last_call],aim);
+  snprintf(info,sizeof(info),"%s    Target offset %+d",pitch_result(),aim);
+  if(phase==CONTACT)describe_contact(info,sizeof(info));
   label(12,28,info,RGB(255,205,105));
   if(phase==COMPLETE){
    snprintf(info,sizeof(info),"Lineup slot %u reserved. Space: new at-bat",(unsigned)at_bat.reserved_slot+1);
    label(12,48,info,RGB(212,223,233));
-  }else label(12,48,"Left / Right: aim    Space / click: deliver pitch",RGB(212,223,233));
+  }else if(phase==CONTACT)label(12,48,"Contact. Space: new at-bat",RGB(212,223,233));
+  else label(12,48,"Space / click: pitch    X: swing    Left / Right: aim",RGB(212,223,233));
   label(12,66,"T: pitch viewer    Esc: exit",RGB(212,223,233));
   if(!ready)label(12,100,"Could not generate or judge this pitch.",RGB(255,130,130));
   return;
@@ -132,7 +183,7 @@ static void render(void){
  char info[180];snprintf(info,sizeof(info),"Curve %d/%u   Group %d / variant %d   Camera %d",selected+1,(unsigned)(sizeof(records)/sizeof(records[0])),records[selected].group,records[selected].variant,preset);
  label(12,29,info,RGB(160,187,204));
  label(12,48,"Left / Right: curve    Up / Down: camera",RGB(212,223,233));
- label(12,66,"Space / click: replay    T: take an at-bat    Esc: exit",RGB(212,223,233));
+ label(12,66,"Space / click: replay    T: play an at-bat    Esc: exit",RGB(212,223,233));
  if(!ready)label(12,100,"This curve could not be generated.",RGB(255,130,130));
 }
 static void paint_window(HWND window,HDC dc){
@@ -158,8 +209,10 @@ static LRESULT CALLBACK proc(HWND window,UINT message,WPARAM w,LPARAM l){
   art_dc=CreateCompatibleDC(canvas);
   fields[0]=load_art(instance,FIELD_RIGHT);
   fields[1]=load_art(instance,FIELD_LEFT);
+  swings[0]=load_art(instance,SWING_RIGHT);
+  swings[1]=load_art(instance,SWING_LEFT);
   ball_image=load_art(instance,PITCH_BALL);
-  if(!canvas||!bitmap||!art_dc||!fields[0]||!fields[1]||!ball_image)return -1;
+  if(!canvas||!bitmap||!art_dc||!fields[0]||!fields[1]||!swings[0]||!swings[1]||!ball_image)return -1;
   previous_bitmap=(HBITMAP)SelectObject(canvas,bitmap);
   font=CreateFontA(-13,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,DEFAULT_PITCH,"Segoe UI");
   if(font)previous_font=(HFONT)SelectObject(canvas,font);
@@ -181,6 +234,7 @@ static LRESULT CALLBACK proc(HWND window,UINT message,WPARAM w,LPARAM l){
   }
   if(taking){
    if(w==VK_SPACE)take_or_restart();
+   else if(w=='X')swing();
    else if(phase==AIM && (w==VK_LEFT || w==VK_RIGHT)){
     aim=max(-40,min(40,aim+(w==VK_LEFT?4:-4)));replay();
    }
@@ -201,6 +255,8 @@ static LRESULT CALLBACK proc(HWND window,UINT message,WPARAM w,LPARAM l){
   if(art_dc)DeleteDC(art_dc);
   if(fields[0])DeleteObject(fields[0]);
   if(fields[1])DeleteObject(fields[1]);
+  if(swings[0])DeleteObject(swings[0]);
+  if(swings[1])DeleteObject(swings[1]);
   if(ball_image)DeleteObject(ball_image);
   KillTimer(window,1);
   if(font){SelectObject(canvas,previous_font);DeleteObject(font);}
@@ -210,7 +266,10 @@ static LRESULT CALLBACK proc(HWND window,UINT message,WPARAM w,LPARAM l){
  return DefWindowProcA(window,message,w,l);
 }
 int WINAPI WinMain(HINSTANCE instance,HINSTANCE previous,LPSTR args,int show){
- (void)previous;taking=strcmp(args,"--at-bat")==0;reset_appearance();SetProcessDPIAware();
+ (void)previous;
+ taking=strcmp(args,"--at-bat")==0;
+ fixed_practice_seed=strcmp(args,"--fixed-seed")==0;
+ reset_appearance();SetProcessDPIAware();
  WNDCLASSA wc={0};wc.lpfnWndProc=proc;wc.hInstance=instance;wc.lpszClassName="BS2PitchMotion";wc.hCursor=LoadCursor(NULL,IDC_ARROW);
  if(!RegisterClassA(&wc))return 1;
  HWND window=CreateWindowExA(0,wc.lpszClassName,"BS2 Pitch Motion",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,980,700,NULL,NULL,instance,NULL);

@@ -113,6 +113,8 @@ def effect(context, kind):
 
 n = C.CDLL(sys.argv[2])
 n.bs2_take_curve.argtypes = [C.POINTER(AtBat), C.c_void_p, C.c_size_t, C.c_void_p, C.c_void_p]
+n.bs2_judge_unhit_curve.argtypes = [C.POINTER(AtBat), C.c_int, C.c_void_p, C.c_size_t, C.c_void_p, C.c_void_p]
+n.bs2_batting_offset.argtypes = [C.c_void_p, C.c_size_t, C.c_void_p, C.c_void_p, C.c_void_p]
 n.bs2_taken_pitch_next_state.argtypes = [C.POINTER(AtBat), C.c_uint, Callback, C.c_void_p]
 n.bs2_pitch_in_zone.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p]
 n.bs2_strike_zone.argtypes = [C.c_void_p, C.c_size_t, C.c_void_p, C.c_void_p]
@@ -198,7 +200,7 @@ def setup(slot, outs):
     u.mem_write(PLAY, bytes(ab.play))
     return ab
 
-def compare(ab, paths, camera, zone):
+def compare(ab, paths, camera, zone, swung=False):
     native_path, arm_path, judge_frame = paths
     u.mem_write(SAMPLE, arm_path)
     put(PITCH+0x90, judge_frame)
@@ -207,8 +209,12 @@ def compare(ab, paths, camera, zone):
     delivered.clear()
     put(RUN+0x10, 19)
     u.mem_write(RUN+0x20, bytes(1))
+    u.mem_write(BATTER+0xe, bytes([swung]))
     call(0x169f2d, RUN)
-    result = n.bs2_take_curve(C.byref(ab), native_path, len(native_path), camera, zone)
+    if swung:
+        result = n.bs2_judge_unhit_curve(C.byref(ab), 1, native_path, len(native_path), camera, zone)
+    else:
+        result = n.bs2_take_curve(C.byref(ab), native_path, len(native_path), camera, zone)
     assert result == ab.play[0xb] and result > 0
     assert delivered == [(RUN, 0xbba, ab.play[0xb])], delivered
     assert word(RUN+0x330) == ab.play[0xc]
@@ -241,6 +247,14 @@ assert len(sequences) == 35
 appearances = pitches = boundary_cases = 0
 for asset, preset in itertools.product(assets, range(3)):
     camera, zone = camera_setup(asset, preset)
+    scene = asset.read_bytes()
+    for x, y in itertools.product((-50, -11, 0, 10, 50), repeat=2):
+        u.mem_write(RUN+0x348, struct.pack('<iii', x, y, -990))
+        point = Point(x * 262144, y * 262144, -990 * 262144)
+        offset = (C.c_int32 * 2)()
+        assert n.bs2_batting_offset(scene, len(scene), camera, point, offset) == 0
+        expected = [C.c_int32(call(addr, RUN)).value for addr in (0x16f1b9, 0x16f16d)]
+        assert list(offset) == expected, (asset, preset, x, y, list(offset), expected)
     strike = Point(0, -11 * 262144, -990 * 262144)
     ball = Point(40 * 262144, strike[1], strike[2])
     assert n.bs2_pitch_in_zone(strike, camera, zone) == 1
@@ -257,6 +271,12 @@ for asset, preset in itertools.product(assets, range(3)):
         boundary_cases += 1
     curves = {(i, c): generate_curve(asset.read_bytes(), r, offset, int(preset == 0))
               for i, r in enumerate(cases) for c, offset in (('S', 0), ('B', 40))}
+    for location, outs in itertools.product('SB', (0, 2)):
+        ab = setup(8, outs)
+        for i in range(3):
+            state = compare(ab, curves[i % 2, location], camera, zone, swung=True)
+            assert ab.play[0xb] == (1 if i < 2 else 5)
+        assert ab.reserved and ab.next_slot == 0 and state == (25 if outs == 2 else 14)
     for seq, outs, slot in itertools.product(sequences, (0, 2), (0, 8)):
         ab = setup(slot, outs)
         for i, c in enumerate(seq):
@@ -270,5 +290,6 @@ for asset, preset in itertools.product(assets, range(3)):
         curve = paths[0]
         assert n.bs2_take_curve(C.byref(ab), curve, len(curve), camera, zone) == -1 and bytes(ab) == before
         appearances += 1
+print('PASS: 150 batting offsets and 24 swinging strikeouts across both figures and all three cameras match ARM.')
 print(f'PASS: {boundary_cases} projected samples near zone boundaries and all six pixel rectangles match ARM.')
 print(f'PASS: {appearances} taken-pitch appearances, {pitches} pitches; ARM events, play bytes, batter reservation and next states match.')

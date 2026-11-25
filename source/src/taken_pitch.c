@@ -35,16 +35,16 @@ int bs2_pitch_in_zone(const BS2Point3 *sample, const BS2Projection *camera,
            between(p.y, zone->first.y, zone->second.y);
 }
 
-int bs2_take_curve(BS2AtBat *ab, const BS2Point3 *path, size_t samples,
+int bs2_judge_unhit_curve(BS2AtBat *ab, int swung, const BS2Point3 *path, size_t samples,
                    const BS2Projection *camera, const BS2StrikeZone *zone) {
-    if (!ab || !path || !camera || !zone || samples < 5 || samples > 4099 || ab->batter_reserved ||
+    if ((swung != 0 && swung != 1) || !ab || !path || !camera || !zone || samples < 5 || samples > 4099 || ab->batter_reserved ||
         ab->batting_slot >= 9) return -1;
     uint8_t *p = ab->play;
     if (p[1] || p[0x24] || p[4] > 2 || p[5] > 3 || p[6] > 2 ||
         bs2_play_game_over(p)) return -1;
 
     int in_zone = bs2_pitch_in_zone(&path[samples - 4], camera, zone);
-    p[0x10] = 0; p[0x12] = 0; p[0x18] = (uint8_t)in_zone;
+    p[0x10] = (uint8_t)swung; p[0x12] = 0; p[0x18] = (uint8_t)in_zone;
     p[0x19] = 0; p[0x1a] = 0;
     int result = bs2_pitch_judge(p, (uint8_t)in_zone);
     if (result == 1) ++p[4];
@@ -58,6 +58,11 @@ int bs2_take_curve(BS2AtBat *ab, const BS2Point3 *path, size_t samples,
     p[0x0c] = (uint8_t)result; /* INIT_HANDLER_GSTATE_PITCH_JUDGE */
     p[0x0b] = (uint8_t)result; /* DoEvent(0xbba), ordinary judge state */
     return result;
+}
+
+int bs2_take_curve(BS2AtBat *ab, const BS2Point3 *path, size_t samples,
+                   const BS2Projection *camera, const BS2StrikeZone *zone) {
+    return bs2_judge_unhit_curve(ab, 0, path, samples, camera, zone);
 }
 
 int bs2_taken_pitch_next_state(BS2AtBat *ab, unsigned ticks, BS2FlowEffect effect, void *context) {

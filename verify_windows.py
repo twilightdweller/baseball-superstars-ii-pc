@@ -51,11 +51,15 @@ def main():
         output = BUILD / (name + ('.dll' if dll else '.exe'))
         # Remove a previous output so a failed build cannot run a stale binary.
         output.unlink(missing_ok=True)
+        if dll:
+            # LINK replaces its import library when the export table changes.
+            for suffix in ('.lib', '.exp'):
+                output.with_suffix(suffix).unlink(missing_ok=True)
         command = common + (['/LD'] if dll else []) + sources + ['/Fe:' + str(output)]
         compile_resources = ''
         if gui:
             resource_file = BUILD / 'batting-art.rc'
-            bitmap_names = ['batting-view-1.bmp', 'batting-view-2.bmp', 'pitch-ball.bmp']
+            bitmap_names = ['batting-view-1.bmp', 'batting-view-2.bmp', 'pitch-ball.bmp', 'swing-1.bmp', 'swing-2.bmp']
             resource_file.write_text(''.join(
                 f'{index} BITMAP "{(BUILD / bmp).as_posix()}"\n'
                 for index, bmp in enumerate(bitmap_names, 101)), encoding='utf-16')
@@ -74,7 +78,7 @@ def main():
 
     viewer = ['src/' + name + '.c' for name in
               ['pitch_viewer', 'pitch_path', 'pitch_curve', 'projection', 'pitch_scene', 'camera',
-               'taken_pitch', 'pitch_rules', 'pitch_flow']]
+               'taken_pitch', 'pitch_rules', 'pitch_flow', 'batting']]
     libraries = {
         'currency': ['currency'], 'state': ['state'], 'title-flow': ['title_flow'],
         'graphics': ['graphics'], 'pitch-curve': ['pitch_curve'], 'projection': ['projection'],
@@ -82,7 +86,7 @@ def main():
         'camera': ['camera', 'projection'],
         'pitch-rules': ['pitch_rules'],
         'pitch-flow': ['pitch_flow'],
-        'taken-pitch': ['taken_pitch', 'pitch_rules', 'pitch_flow', 'pitch_scene', 'projection', 'camera', 'pitch_path', 'pitch_curve'],
+        'taken-pitch': ['batting', 'taken_pitch', 'pitch_rules', 'pitch_flow', 'pitch_scene', 'projection', 'camera', 'pitch_path', 'pitch_curve'],
     }
     built_libraries = set()
     for name, sources in libraries.items():
@@ -116,6 +120,7 @@ def main():
         'check_original': [str(original)], 'test_native': [str(original)],
         'test_state': [str(original)], 'test_title_flow': [str(original)],
         'test_startup_sequence': [], 'test_graphics': [str(original), str(apk)],
+        'test_swing': [str(original), str(apk), str(BUILD / 'bs2-taken-pitch.dll')],
         'test_batter_stance': [str(original), str(apk), str(BUILD)],
         'test_figure_selection': [str(original)],
     }

@@ -28,6 +28,19 @@ int bs2_pitch_release(const unsigned char *f,size_t size,int style,int raised,BS
     return 0;
 }
 
+/* Integer ToVirtual overload used by GetStrikeZoneCenter. */
+int bs2_batting_center(const unsigned char *f, size_t size, BS2Point3 *center) {
+    if (!f || !center || size != 0x328) return -1;
+    int w = read32(f + 8), h = read32(f + 12);
+    if (w <= 0 || w > 4096 || h <= 0 || h > 4096) return -1;
+    int vw = virtual_size(w, read32(f + 4)), vh = virtual_size(h, read32(f + 4));
+    int32_t x = wrap((int64_t)vw * read32(f + 0x34)) / w - wrap((int64_t)vw * read32(f + 0x174)) / w;
+    int32_t z = wrap((int64_t)vh * read32(f + 0x178)) / h - wrap((int64_t)vh * read32(f + 0x38)) / h;
+    *center = (BS2Point3){wrap((int64_t)x * 262144), wrap(-(int64_t)read32(f + 0x17c) * 262144),
+                          wrap((int64_t)z * 262144)};
+    return 0;
+}
+
 /* IntersectStrikeZone uses the fixed-point xToVirtual overload for the plate
  * and integer virtual coordinates for the origin. They round differently. */
 int bs2_zone_corners(const unsigned char *f, size_t size,

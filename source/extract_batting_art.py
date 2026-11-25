@@ -75,7 +75,7 @@ class SpriteSheet:
             canvas.paste(image, (origin[0]+x, origin[1]+dy), image)
 
 
-def build_scene(sheets, preset):
+def build_scene(sheets, preset, batter_frame=0):
     left = preset == 2
     # Fixed lower 480x320 viewport of the original 480x390 batting view.
     scroll_y = 320 - 390
@@ -110,7 +110,7 @@ def build_scene(sheets, preset):
     sheets['pitcher'].draw(scene, 0, (251 if left else 230, 206), mirror=left)
     # Ace frames are authored for their own stance and drawn without a whole-frame flip.
     batter = sheets['left_batter'] if left else sheets['right_batter']
-    batter.draw(scene, 0, (299 if left else 180, scroll_y+364))
+    batter.draw(scene, batter_frame, (299 if left else 180, scroll_y+364))
     return scene
 
 
@@ -124,6 +124,11 @@ def main(apk_path, out):
         }.items()}
         for preset in (1, 2):
             build_scene(sheets, preset).save(out / f'batting-view-{preset}.bmp')
+            first, last = (12, 21) if preset == 1 else (14, 22)
+            strip = Image.new('RGB', (480, 320 * (last-first+1)))
+            for frame in range(first, last+1):
+                strip.paste(build_scene(sheets, preset, frame), (0, 320 * (frame-first)))
+            strip.save(out / f'swing-{preset}.bmp')
         ball = SpriteSheet(apk, 'ball')
         index, x, y, attrs = ball.parts(7)[0]
         sprite = ball.image(index)
