@@ -66,7 +66,8 @@ def check_art(preset, preview=False):
             same = sum(n for n, color in diff.getcolors(crop.width*crop.height) if color == (0, 0, 0))
             assert same >= crop.width*crop.height*0.95, (preset, box, same)
         if preview:
-            rendered.save(build / 'at-bat-preview.png')
+            filename = 'at-bat-preview.png' if preset == 1 else 'at-bat-preview-left.png'
+            rendered.save(build / filename)
 
 def pitch(number, result, score, terminal=False):
     # On the first delivery, the only moving artwork below the scoreboard is the ball.
@@ -102,6 +103,11 @@ try:
     key(0x26)
     wait_for(lambda: capture(hwnd).crop(strip).tobytes() == expected_strip, 'second batting view')
     check_art(2)
+    key(ord('T'))
+    wait_for(lambda: 'Pitch 0' in title(), 'left-handed plate appearance')
+    check_art(2, preview=True)
+    key(ord('T'))
+    wait_for(lambda: title() == 'BS2 Pitch Motion', 'return from left-handed appearance')
     key(0x26)
     key(ord('T'))
     wait_for(lambda: 'Pitch 0' in title(), 'fresh plate appearance')

@@ -11,7 +11,7 @@ with open(sys.argv[1],'rb') as f:
 count=0
 with zipfile.ZipFile(sys.argv[2]) as z:
  for resource in ['ui/title','mainui/main_title','stadium/attack','stadium/fence',
-                  'ace/pitcher_celine','ace/batter_medica','ball']:
+                  'ace/pitcher_celine','ace/batter_medica','ace/batter_ara','ball']:
   name='assets/'+resource+'.pzx'
   for idx,w,h,pal,payload in frames(z.read(name)):
    expected=render(w,h,pal,payload)

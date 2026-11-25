@@ -108,7 +108,9 @@ def build_scene(sheets, preset):
     # Original frame-zero poses. The two pitcher anchors are the projections of
     # defense position zero. The batter anchors come from the handedness table.
     sheets['pitcher'].draw(scene, 0, (251 if left else 230, 206), mirror=left)
-    sheets['batter'].draw(scene, 0, (299 if left else 180, scroll_y+364), mirror=left)
+    # Ace frames are authored for their own stance and drawn without a whole-frame flip.
+    batter = sheets['left_batter'] if left else sheets['right_batter']
+    batter.draw(scene, 0, (299 if left else 180, scroll_y+364))
     return scene
 
 
@@ -117,7 +119,8 @@ def main(apk_path, out):
     with zipfile.ZipFile(apk_path) as apk:
         sheets = {key: SpriteSheet(apk, name) for key, name in {
             'ground': 'stadium/attack', 'fence': 'stadium/fence',
-            'pitcher': 'ace/pitcher_celine', 'batter': 'ace/batter_medica',
+            'pitcher': 'ace/pitcher_celine',
+            'right_batter': 'ace/batter_ara', 'left_batter': 'ace/batter_medica',
         }.items()}
         for preset in (1, 2):
             build_scene(sheets, preset).save(out / f'batting-view-{preset}.bmp')

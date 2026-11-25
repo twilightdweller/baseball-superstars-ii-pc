@@ -116,6 +116,7 @@ def main():
         'check_original': [str(original)], 'test_native': [str(original)],
         'test_state': [str(original)], 'test_title_flow': [str(original)],
         'test_startup_sequence': [], 'test_graphics': [str(original), str(apk)],
+        'test_batter_stance': [str(original), str(apk), str(BUILD)],
         'test_figure_selection': [str(original)],
     }
     for test, library in [('test_pitch_curve', 'pitch-curve'), ('test_cardinal', 'pitch-curve'),
