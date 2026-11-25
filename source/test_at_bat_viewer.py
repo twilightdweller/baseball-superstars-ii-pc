@@ -93,6 +93,12 @@ def swing_contact(preset, score="Balls 0, Strikes 0, Outs 0"):
     ui.SendMessageW(hwnd, 0x100, 0x20, 0)
     time.sleep(0.305)
     ui.SendMessageW(hwnd, 0x100, ord('X'), 0)
+    wait_for(lambda: '| Ball in play |' in title(), 'ball released after contact')
+    # Above the plate, between the HUD and the batter's swing artwork.
+    field = (0, 89, 480, 180)
+    start = capture(hwnd).crop(field)
+    wait_for(lambda: ImageChops.difference(start, capture(hwnd).crop(field)).getbbox(),
+             'batted ball traveling over the field')
     wait_for(lambda: f'| Contact | {score} | ' in title() and ' pattern' in title(), 'timed swing selected a batting pattern')
     build = Path(sys.argv[1]).resolve().parent
     with Image.open(build / f'swing-{preset}.bmp') as atlas:
@@ -175,6 +181,29 @@ try:
     wait_for(lambda: 'Pitch 0 | Ready | Balls 0, Strikes 0, Outs 0' in title(), 'direct at-bat startup')
     key(0x1b)
     assert viewer.wait(timeout=5) == 0
+    # Seed 22 selects a normal foul on the first timed swing of this matchup.
+    viewer = subprocess.Popen([sys.argv[1], '--at-bat', '--seed', '22'], startupinfo=startup)
+    hwnd = wait_for(window, 'foul test window')
+    assert ui.SetWindowPos(hwnd, None, -16300, -16300, 0, 0, 0x55)
+    for initial_strikes in (0, 2):
+        for i in range(initial_strikes):
+            pitch(i+1, 'Called strike', f'Balls 0, Strikes {i+1}, Outs 0')
+        ui.SendMessageW(hwnd, 0x100, 0x20, 0)
+        time.sleep(0.305)
+        ui.SendMessageW(hwnd, 0x100, ord('X'), 0)
+        strikes = min(2, initial_strikes+1)
+        expected = f'Pitch {initial_strikes+1} | Foul ball | Balls 0, Strikes {strikes}, Outs 0 | Ready'
+        wait_for(lambda: expected in title(), expected)
+        if initial_strikes == 0:
+            pitch(2, 'Called strike', 'Balls 0, Strikes 2, Outs 0')
+            pitch(3, 'Called strikeout', 'Balls 0, Strikes 2, Outs 1', True)
+            key(0x20)
+            wait_for(lambda: 'Pitch 0 | Ready' in title(), 'reset after first foul test')
+        else:
+            pitch(4, 'Called strikeout', 'Balls 0, Strikes 2, Outs 1', True)
+    key(0x1b)
+    assert viewer.wait(timeout=5) == 0
+    print('PASS: Untouched fouls at zero and two strikes kept the batter at the plate through the next pitch.')
 finally:
     if viewer.poll() is None:
         viewer.kill()
