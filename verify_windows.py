@@ -64,8 +64,10 @@ def main():
         return run('build-' + name, ['cmd.exe', '/d', '/c', str(script)])
 
     viewer = ['src/' + name + '.c' for name in
-              ['pitch_viewer', 'pitch_path', 'pitch_curve', 'projection', 'pitch_scene', 'camera']]
-    compile_target('BS2-Pitch-Motion', viewer, gui=True)
+              ['pitch_viewer', 'pitch_path', 'pitch_curve', 'projection', 'pitch_scene', 'camera',
+               'taken_pitch', 'pitch_rules', 'pitch_flow']]
+    if compile_target('BS2-Pitch-Motion', viewer, gui=True):
+        run('test-at-bat-viewer', [sys.executable, 'test_at_bat_viewer.py', str(BUILD / 'BS2-Pitch-Motion.exe')])
     libraries = {
         'currency': ['currency'], 'state': ['state'], 'title-flow': ['title_flow'],
         'graphics': ['graphics'], 'pitch-curve': ['pitch_curve'], 'projection': ['projection'],
@@ -73,6 +75,7 @@ def main():
         'camera': ['camera', 'projection'],
         'pitch-rules': ['pitch_rules'],
         'pitch-flow': ['pitch_flow'],
+        'taken-pitch': ['taken_pitch', 'pitch_rules', 'pitch_flow', 'pitch_scene', 'projection', 'camera', 'pitch_path', 'pitch_curve'],
     }
     for name, sources in libraries.items():
         compile_target('bs2-' + name, ['src/' + item + '.c' for item in sources], dll=True)
@@ -105,7 +108,7 @@ def main():
     for test, library in [('test_pitch_curve', 'pitch-curve'), ('test_cardinal', 'pitch-curve'),
                           ('test_projection', 'projection'), ('test_pitch_path', 'pitch-path'),
                           ('test_camera', 'camera'), ('test_pitch_rules', 'pitch-rules'),
-                          ('test_pitch_flow', 'pitch-flow')]:
+                          ('test_pitch_flow', 'pitch-flow'), ('test_taken_pitch', 'taken-pitch')]:
         tests[test] = [str(original), str(BUILD / ('bs2-' + library + '.dll'))]
     for test, arguments in tests.items():
         run(test, [sys.executable, test + '.py', *arguments])

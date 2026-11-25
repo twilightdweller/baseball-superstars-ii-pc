@@ -27,3 +27,26 @@ int bs2_pitch_release(const unsigned char *f,size_t size,int style,int raised,BS
     *out=(BS2Point3){wrap((int64_t)x*262144),wrap((int64_t)y*262144),wrap((int64_t)z*262144)};
     return 0;
 }
+
+/* IntersectStrikeZone uses the fixed-point xToVirtual overload for the plate
+ * and integer virtual coordinates for the origin. They round differently. */
+int bs2_zone_corners(const unsigned char *f, size_t size,
+                     BS2Point3 *first, BS2Point3 *second) {
+    if (!f || size != 0x328 || !first || !second) return -1;
+    int32_t width = read32(f + 8), height = read32(f + 12), scale = read32(f + 4);
+    if (width <= 0 || width > 4096 || height <= 0 || height > 4096) return -1;
+    int32_t vw = virtual_size(width, scale), vh = virtual_size(height, scale);
+    int32_t ox = wrap((int64_t)vw * read32(f + 0x34)) / width;
+    int32_t oz = wrap((int64_t)vh * read32(f + 0x38)) / height;
+    int32_t sx = wrap((int64_t)vw * 262144) / width;
+    int32_t sz = wrap((int64_t)vh * 262144) / height;
+    int32_t plate_x = wrap((int64_t)read32(f + 0x174) * 262144);
+    int32_t plate_z = wrap((int64_t)read32(f + 0x178) * 262144);
+    int32_t x = wrap((int64_t)ox * 262144 - shift18((int64_t)sx * plate_x + 131072));
+    int32_t z = wrap((int64_t)shift18((int64_t)sz * plate_z + 131072) - (int64_t)oz * 262144);
+    int32_t y = wrap(-(int64_t)read32(f + 0x17c) * 262144);
+    int32_t dx = read32(f + 0x180), dy = read32(f + 0x184);
+    *first = (BS2Point3){wrap((int64_t)x - dx), wrap((int64_t)y - dy), z};
+    *second = (BS2Point3){wrap((int64_t)x + dx), wrap((int64_t)y + dy), z};
+    return 0;
+}

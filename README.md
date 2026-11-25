@@ -1,67 +1,30 @@
-# Baseball Superstars II: native pitch-motion viewer
+# Baseball Superstars II native Windows port
 
-Extract the ZIP and run `BS2-Pitch-Motion.exe` on 64-bit Windows.
-No APK, Android emulator, or additional game files are needed to run this viewer.
+The Windows viewer runs recovered C gameplay code. Press **T** to start one plate appearance with the batter taking every pitch. The original pitch curve, camera, and strike zone determine the call. The appearance ends in a called strikeout or a walk.
 
-## Controls
+## Run on Windows
 
-- Left / Right: browse the 369 extracted curve records.
-- Up / Down: switch between camera presets 1 and 2.
-- Space or left click: replay the selected path.
-- Escape: close.
+From the Git checkout, run the following in PowerShell. The verifier requires Visual Studio C++ Build Tools with the Windows SDK, Python, pyelftools, Unicorn, Pillow, and the supplied APK. See [WINDOWS-SETUP.md](WINDOWS-SETUP.md) for setup details.
 
-A gold marker follows the recovered pitch path. A line shows the complete path.
-Playback loops with a short pause at each end. The window can be resized.
-
-## What is original and what is diagnostic
-
-The curve data, pitch-positioning calculation, release-position data, and camera
-presets come from the supplied II APK. The native implementations were checked
-against the original machine code in earlier checkpoints and in this checkpoint.
-
-The marker, line, labels, fixed target, record browser, pause, and replay loop are
-new diagnostic UI. The viewer uses base record frame counts and a 20 ms display
-step; complete match timing and speed modifiers have not been recovered. It does
-not show original ball appearance/size, sprites, stadium artwork, player motion,
-batting, or match gameplay. Records are identified numerically because their
-pitch-name mapping has not been verified. This is not the final game interface.
-
-The target is fixed at Q18 world coordinates (0, -10, 0). Up/Down selects the two
-perspective presets without changing the target. Preset zero is verified in the
-tests but omitted from this small viewer because its original origin lies outside
-the 480x320 canvas used here. This is not evidence that preset zero is unused.
-
-## New implementation and verification
-
-`camera.c` builds projection matrices from decoded figure records, including the
-original lookup trigonometry, float-to-fixed conversion, matrix composition, and
-screen origin/scale. All three presets in both supplied version-7 figure layouts
-match original `CCLScreen::SetScreen` outputs exactly (six configurations).
-The original soft-float and camera math execute during comparison; only external
-memory-copy/fill operations are substituted. The tests use controlled screen
-initialization, not a running match.
-
-Camera tests passed with UndefinedBehaviorSanitizer enabled. The Windows viewer
-compiled with strict warnings as a native x86-64 executable. The first curve was
-also projected through both displayed cameras on the development host to confirm
-it falls within the viewer canvas. Windows GUI execution still requires the user
-to test the supplied executable; no visual Windows verification is claimed.
-
-## Build
-
-From the source directory, with the Python ziglang package installed:
-
-```sh
-python -m ziglang cc -target x86_64-windows-gnu -O2 -Wall -Wextra -Werror src/pitch_viewer.c src/pitch_path.c src/pitch_curve.c src/projection.c src/pitch_scene.c src/camera.c -o BS2-Pitch-Motion.exe -lgdi32 -luser32 -Wl,--subsystem,windows
+```powershell
+python verify_windows.py
+.\build\BS2-Pitch-Motion.exe --at-bat
 ```
 
-Camera comparison (requires original native library, pyelftools, unicorn, GCC):
+The resulting executable runs on its own. Launch it without arguments to open the 369-record pitch viewer.
 
-```sh
-gcc -std=c11 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all -Wall -Wextra -Werror -shared -fPIC src/camera.c src/projection.c -o /tmp/bs2-camera.so
-python test_camera.py /tmp/baseball-game.so /tmp/bs2-camera.so
-```
+| Control | Taken-pitch appearance | Pitch viewer |
+| --- | --- | --- |
+| Left / Right | Adjust horizontal aim between pitches | Select curve |
+| Space / click | Deliver a pitch, or start fresh after the result | Replay |
+| Up / Down | | Switch camera |
+| T | Return to the pitch viewer | Start an appearance with the selected curve and camera |
+| Esc | Exit | Exit |
 
-The archive includes prior source and research. Earlier checkpoint documents
-describe historical states. The next integration work is original scene artwork
-and animation, then batting input and contact logic.
+Leave the aim centered and deliver three pitches for a called strikeout. From the center, press **Right** six times and deliver four pitches for a walk. Each appearance starts with empty bases and zero outs. The terminal screen shows the next lineup slot the original game reserves.
+
+## Recovery status
+
+The native code covers taken pitches in normal play from the generated curve through the count, terminal result, lineup reservation, and the next state decision. The controls, pitch marker, and 20 ms display step are diagnostic. Swing input, bat contact, live pitch selection, runner advancement, and a continuous match remain open. Python builds and tests the port. The Windows executable runs the C implementation.
+
+The [checkpoint 12 report](source/CHECKPOINT-12.md) records the original ARM routines, fixture conditions, comparisons, and test boundaries. Earlier checkpoint documents in `source` describe the earlier builds.
