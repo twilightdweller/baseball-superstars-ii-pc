@@ -1,6 +1,9 @@
-"""Exercise keyboard and timer delivery in a hidden instance of the newly built viewer."""
+"""Check the rendered field, keyboard input and pitch delivery in an off-screen viewer."""
 import ctypes as C
 from ctypes import wintypes as W
+from pathlib import Path
+from PIL import Image, ImageChops
+from viewer_capture import capture
 import subprocess
 import sys
 import time
@@ -12,6 +15,7 @@ ui.GetWindowThreadProcessId.argtypes = [W.HWND, C.POINTER(W.DWORD)]
 ui.GetClassNameW.argtypes = [W.HWND, W.LPWSTR, C.c_int]
 ui.GetWindowTextW.argtypes = [W.HWND, W.LPWSTR, C.c_int]
 ui.PostMessageW.argtypes = [W.HWND, W.UINT, W.WPARAM, W.LPARAM]
+ui.SetWindowPos.argtypes = [W.HWND, W.HWND, C.c_int, C.c_int, C.c_int, C.c_int, W.UINT]
 
 def wait_for(check, description):
     deadline = time.monotonic() + 10
@@ -48,11 +52,39 @@ def title():
 def key(code):
     assert ui.PostMessageW(hwnd, 0x100, code, 0), C.get_last_error()
 
+def check_art(preset, preview=False):
+    build = Path(sys.argv[1]).resolve().parent
+    with Image.open(build / f'batting-view-{preset}.bmp') as reference:
+        rendered = capture(hwnd)
+        scenes = [(0, 90, 480, 320), (205, 152, 275, 209),
+                  (130, 204, 213, 294) if preset == 1 else (267, 204, 350, 294)]
+        for box in scenes:
+            crop = rendered.crop(box)
+            expected = reference.crop(box)
+            assert len(crop.getcolors(crop.width * crop.height)) > 40, (preset, box, 'missing artwork')
+            diff = ImageChops.difference(crop, expected).convert('RGB')
+            same = sum(n for n, color in diff.getcolors(crop.width*crop.height) if color == (0, 0, 0))
+            assert same >= crop.width*crop.height*0.95, (preset, box, same)
+        if preview:
+            rendered.save(build / 'at-bat-preview.png')
+
 def pitch(number, result, score, terminal=False):
+    # On the first delivery, the only moving artwork below the scoreboard is the ball.
+    region = (185, 140, 285, 285)
+    first_delivery = number == 1 and result == 'Called strike'
+    if first_delivery:
+        before = capture(hwnd).crop(region)
     key(0x20)
+    if first_delivery:
+        def ball_moved():
+            diff = ImageChops.difference(capture(hwnd).crop(region), before)
+            bounds = diff.getbbox()
+            return bounds and bounds[3] - bounds[1] > 10
+        wait_for(ball_moved, 'ball moving from the pitcher toward the plate')
     expected = f'BS2 At-Bat | Pitch {number} | {result} | {score} | ' + ('Complete' if terminal else 'Ready')
     wait_for(lambda: title() == expected, expected)
 
+ui.SetProcessDPIAware()
 startup = subprocess.STARTUPINFO()
 startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 startup.wShowWindow = 0
@@ -60,8 +92,20 @@ viewer = subprocess.Popen([sys.argv[1]], startupinfo=startup)
 try:
     hwnd = wait_for(window, 'viewer window')
     wait_for(lambda: title() == 'BS2 Pitch Motion', 'default curve viewer')
+    # Give DWM an off-screen client surface while keeping the user's focus.
+    assert ui.SetWindowPos(hwnd, None, -16300, -16300, 0, 0, 0x55)
+    check_art(1)
+    with Image.open(Path(sys.argv[1]).resolve().parent / 'batting-view-2.bmp') as field:
+        # This strip of the left batter's box changes with handedness and stays clear of the ball.
+        strip = (112, 270, 162, 280)
+        expected_strip = field.crop(strip).tobytes()
+    key(0x26)
+    wait_for(lambda: capture(hwnd).crop(strip).tobytes() == expected_strip, 'second batting view')
+    check_art(2)
+    key(0x26)
     key(ord('T'))
     wait_for(lambda: 'Pitch 0' in title(), 'fresh plate appearance')
+    check_art(1, preview=True)
     pitch(1, 'Called strike', 'Balls 0, Strikes 1, Outs 0')
     pitch(2, 'Called strike', 'Balls 0, Strikes 2, Outs 0')
     pitch(3, 'Called strikeout', 'Balls 0, Strikes 2, Outs 1', True)
@@ -79,4 +123,4 @@ finally:
     if viewer.poll() is None:
         viewer.kill()
         viewer.wait()
-print('PASS: Windows viewer accepted keyboard input, delivered three called strikes and a four-ball walk, reset, returned to curve view and exited.')
+print('PASS: Both batting views and at-bat artwork rendered. Windows viewer accepted keyboard input, delivered three called strikes and a four-ball walk, reset, returned to curve view and exited.')

@@ -29,17 +29,17 @@ static void reset_appearance(void) {
 static void flow_effect(void *context, int effect) { (void)context; (void)effect; }
 static HDC canvas;
 static HBITMAP bitmap,previous_bitmap;
+static HDC art_dc;
+static HBITMAP fields[2],ball_image;
+enum { FIELD_RIGHT = 101, FIELD_LEFT, PITCH_BALL };
 static HFONT font,previous_font;
 static int px(BS2Point2 p){return p.x/262144;}
 static int py(BS2Point2 p){return p.y/262144;}
 static void replay(void){
  const PitchRecord *r=&records[selected];BS2PitchSpec spec={0};
  spec.count=r->count;spec.frames=r->frames;spec.style=r->style;spec.coordinate_format=1;spec.kind=r->kind;
- spec.target=(BS2Point3){0,-10*262144,0};
- if(taking){
-  spec.target=r->points[r->count-1];
-  spec.target.x+=aim*262144;
- }
+ spec.target=r->points[r->count-1];
+ if(taking)spec.target.x+=aim*262144;
  ready=bs2_camera_from_figure(figure,sizeof(figure),preset,&camera)==0 &&
        bs2_pitch_release(figure,sizeof(figure),r->style,preset==0,&spec.release)==0 &&
        bs2_pitch_path(&spec,r->points,controls,path)==0;
@@ -74,17 +74,25 @@ static void update_title(HWND window) {
           phase==COMPLETE?" | Complete":phase==AIM?" | Ready":"");
  SetWindowTextA(window,title);
 }
-static void label(int x,int y,const char *s,COLORREF color){SetTextColor(canvas,color);TextOutA(canvas,x,y,s,(int)lstrlenA(s));}
+static void label(int x,int y,const char *s,COLORREF color){
+ SetTextColor(canvas,color);
+ TextOutA(canvas,x,y,s,(int)lstrlenA(s));
+}
 static void render(void){
- RECT bounds={0,0,480,320};HBRUSH bg=CreateSolidBrush(RGB(18,25,33));FillRect(canvas,&bounds,bg);DeleteObject(bg);
- SetBkMode(canvas,TRANSPARENT);
- if(ready){
+ HGDIOBJ old_art=SelectObject(art_dc,fields[preset-1]);
+ BitBlt(canvas,0,0,480,320,art_dc,0,0,SRCCOPY);
+ SelectObject(art_dc,old_art);
+ SetBkMode(canvas,OPAQUE);
+ SetBkColor(canvas,RGB(18,25,33));
+ if(ready && !taking){
   HPEN line=CreatePen(PS_SOLID,1,RGB(78,108,129));HGDIOBJ old=SelectObject(canvas,line);
   for(int i=0;i<frames;i++){
    BS2Point2 p;bs2_project_point(&p,&path[i],&camera);
    if(i==0)MoveToEx(canvas,px(p),py(p),NULL);else LineTo(canvas,px(p),py(p));
   }
   SelectObject(canvas,old);DeleteObject(line);
+ }
+ if(ready){
   if(taking){
    int left=min(zone.first.x,zone.second.x),right=max(zone.first.x,zone.second.x);
    int top=min(zone.first.y,zone.second.y),bottom=max(zone.first.y,zone.second.y);
@@ -101,8 +109,9 @@ static void render(void){
   BS2Point2 p;
   if(taking)p=bs2_pitch_screen_pixel(&path[frame],&camera);
   else{bs2_project_point(&p,&path[frame],&camera);p=(BS2Point2){px(p),py(p)};}
-  HBRUSH ball=CreateSolidBrush(RGB(255,205,105));HGDIOBJ ob=SelectObject(canvas,ball);old=SelectObject(canvas,GetStockObject(NULL_PEN));
-  Ellipse(canvas,p.x-4,p.y-4,p.x+5,p.y+5);SelectObject(canvas,ob);SelectObject(canvas,old);DeleteObject(ball);
+  old_art=SelectObject(art_dc,ball_image);
+  TransparentBlt(canvas,p.x-8,p.y-8,17,17,art_dc,0,0,17,17,RGB(255,0,255));
+  SelectObject(art_dc,old_art);
  }
  if(taking){
   char info[180];
@@ -115,23 +124,42 @@ static void render(void){
    snprintf(info,sizeof(info),"Lineup slot %u reserved. Space: new at-bat",(unsigned)at_bat.reserved_slot+1);
    label(12,48,info,RGB(212,223,233));
   }else label(12,48,"Left / Right: aim    Space / click: deliver pitch",RGB(212,223,233));
-  label(12,300,"T: pitch viewer    Esc: exit",RGB(212,223,233));
+  label(12,66,"T: pitch viewer    Esc: exit",RGB(212,223,233));
   if(!ready)label(12,100,"Could not generate or judge this pitch.",RGB(255,130,130));
   return;
  }
- RECT top={0,0,480,55},bottom={0,263,480,320};bg=CreateSolidBrush(RGB(18,25,33));FillRect(canvas,&top,bg);FillRect(canvas,&bottom,bg);DeleteObject(bg);
  label(12,8,"BASEBALL SUPERSTARS II - PITCH MOTION",RGB(235,241,246));
  char info[180];snprintf(info,sizeof(info),"Curve %d/%u   Group %d / variant %d   Camera %d",selected+1,(unsigned)(sizeof(records)/sizeof(records[0])),records[selected].group,records[selected].variant,preset);
  label(12,29,info,RGB(160,187,204));
- label(12,270,"Left / Right: curve    Up / Down: camera",RGB(212,223,233));
- label(12,288,"Space / click: replay    T: take an at-bat    Esc: exit",RGB(212,223,233));
+ label(12,48,"Left / Right: curve    Up / Down: camera",RGB(212,223,233));
+ label(12,66,"Space / click: replay    T: take an at-bat    Esc: exit",RGB(212,223,233));
  if(!ready)label(12,100,"This curve could not be generated.",RGB(255,130,130));
+}
+static void paint_window(HWND window,HDC dc){
+ RECT r;
+ GetClientRect(window,&r);
+ FillRect(dc,&r,(HBRUSH)GetStockObject(BLACK_BRUSH));
+ render();
+ int width=r.right,height=width*2/3;
+ if(height>r.bottom){height=r.bottom;width=height*3/2;}
+ if(width>0&&height>0){
+  SetStretchBltMode(dc,COLORONCOLOR);
+  StretchBlt(dc,(r.right-width)/2,(r.bottom-height)/2,width,height,canvas,0,0,480,320,SRCCOPY);
+ }
+}
+static HBITMAP load_art(HINSTANCE instance,int id){
+ return (HBITMAP)LoadImageA(instance,MAKEINTRESOURCEA(id),IMAGE_BITMAP,0,0,LR_CREATEDIBSECTION);
 }
 static LRESULT CALLBACK proc(HWND window,UINT message,WPARAM w,LPARAM l){
  switch(message){
  case WM_CREATE:{
   HDC dc=GetDC(window);canvas=CreateCompatibleDC(dc);bitmap=CreateCompatibleBitmap(dc,480,320);ReleaseDC(window,dc);
-  if(!canvas||!bitmap)return -1;
+  HINSTANCE instance=((LPCREATESTRUCTA)l)->hInstance;
+  art_dc=CreateCompatibleDC(canvas);
+  fields[0]=load_art(instance,FIELD_RIGHT);
+  fields[1]=load_art(instance,FIELD_LEFT);
+  ball_image=load_art(instance,PITCH_BALL);
+  if(!canvas||!bitmap||!art_dc||!fields[0]||!fields[1]||!ball_image)return -1;
   previous_bitmap=(HBITMAP)SelectObject(canvas,bitmap);
   font=CreateFontA(-13,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,DEFAULT_PITCH,"Segoe UI");
   if(font)previous_font=(HFONT)SelectObject(canvas,font);
@@ -165,13 +193,15 @@ static LRESULT CALLBACK proc(HWND window,UINT message,WPARAM w,LPARAM l){
   replay();InvalidateRect(window,NULL,FALSE);return 0;
  case WM_LBUTTONUP:if(taking){take_or_restart();update_title(window);}else replay();InvalidateRect(window,NULL,FALSE);return 0;
  case WM_PAINT:{
-  PAINTSTRUCT paint;HDC dc=BeginPaint(window,&paint);RECT r;GetClientRect(window,&r);
-  FillRect(dc,&r,(HBRUSH)GetStockObject(BLACK_BRUSH));render();
-  int width=r.right,height=width*2/3;if(height>r.bottom){height=r.bottom;width=height*3/2;}
-  if(width>0&&height>0){SetStretchBltMode(dc,COLORONCOLOR);StretchBlt(dc,(r.right-width)/2,(r.bottom-height)/2,width,height,canvas,0,0,480,320,SRCCOPY);}
-  EndPaint(window,&paint);return 0;
+  PAINTSTRUCT paint;HDC dc=BeginPaint(window,&paint);
+  paint_window(window,dc);EndPaint(window,&paint);return 0;
  }
+ case WM_PRINTCLIENT:paint_window(window,(HDC)w);return 0;
  case WM_DESTROY:
+  if(art_dc)DeleteDC(art_dc);
+  if(fields[0])DeleteObject(fields[0]);
+  if(fields[1])DeleteObject(fields[1]);
+  if(ball_image)DeleteObject(ball_image);
   KillTimer(window,1);
   if(font){SelectObject(canvas,previous_font);DeleteObject(font);}
   if(bitmap){SelectObject(canvas,previous_bitmap);DeleteObject(bitmap);}

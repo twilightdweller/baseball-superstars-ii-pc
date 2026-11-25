@@ -2,7 +2,7 @@
 
 Usage: python verify_windows.py [--apk PATH]
 Requires VS C++ Build Tools, Windows SDK, pyelftools, unicorn and Pillow.
-The APK and extracted ARM library are used only by development verification.
+The build extracts the viewer artwork from the APK. Verification also uses its original ARM library.
 """
 import argparse
 import hashlib
@@ -52,22 +52,29 @@ def main():
         # Remove a previous output so a failed build cannot run a stale binary.
         output.unlink(missing_ok=True)
         command = common + (['/LD'] if dll else []) + sources + ['/Fe:' + str(output)]
+        compile_resources = ''
         if gui:
-            command += ['/link', 'gdi32.lib', 'user32.lib', '/SUBSYSTEM:WINDOWS']
+            resource_file = BUILD / 'batting-art.rc'
+            bitmap_names = ['batting-view-1.bmp', 'batting-view-2.bmp', 'pitch-ball.bmp']
+            resource_file.write_text(''.join(
+                f'{index} BITMAP "{(BUILD / bmp).as_posix()}"\n'
+                for index, bmp in enumerate(bitmap_names, 101)), encoding='utf-16')
+            resource = BUILD / 'batting-art.res'
+            compile_resources = subprocess.list2cmdline(
+                ['rc.exe', '/nologo', '/fo', str(resource), str(resource_file)]) + '\nif errorlevel 1 exit /b 1\n'
+            command += [str(resource), '/link', 'gdi32.lib', 'user32.lib', 'msimg32.lib', '/SUBSYSTEM:WINDOWS']
         elif dll:
             exports = sorted(set(symbol for file in sources for symbol in
                                  re.findall(r'\b(bs2_\w+)\s*\(', (SOURCE / file).read_text())))
             command += ['/link'] + ['/EXPORT:' + name for name in exports]
         script = BUILD / ('compile-' + name + '.cmd')
         script.write_text('@echo off\ncall "' + str(vcvars) + '" -arch=x64 -host_arch=x64\n'
-                          'if errorlevel 1 exit /b 1\n' + subprocess.list2cmdline(command) + '\n')
+                          'if errorlevel 1 exit /b 1\n' + compile_resources + subprocess.list2cmdline(command) + '\n')
         return run('build-' + name, ['cmd.exe', '/d', '/c', str(script)])
 
     viewer = ['src/' + name + '.c' for name in
               ['pitch_viewer', 'pitch_path', 'pitch_curve', 'projection', 'pitch_scene', 'camera',
                'taken_pitch', 'pitch_rules', 'pitch_flow']]
-    if compile_target('BS2-Pitch-Motion', viewer, gui=True):
-        run('test-at-bat-viewer', [sys.executable, 'test_at_bat_viewer.py', str(BUILD / 'BS2-Pitch-Motion.exe')])
     libraries = {
         'currency': ['currency'], 'state': ['state'], 'title-flow': ['title_flow'],
         'graphics': ['graphics'], 'pitch-curve': ['pitch_curve'], 'projection': ['projection'],
@@ -77,8 +84,14 @@ def main():
         'pitch-flow': ['pitch_flow'],
         'taken-pitch': ['taken_pitch', 'pitch_rules', 'pitch_flow', 'pitch_scene', 'projection', 'camera', 'pitch_path', 'pitch_curve'],
     }
+    built_libraries = set()
     for name, sources in libraries.items():
-        compile_target('bs2-' + name, ['src/' + item + '.c' for item in sources], dll=True)
+        built = compile_target('bs2-' + name, ['src/' + item + '.c' for item in sources], dll=True)
+        if built:
+            built_libraries.add(name)
+    if 'graphics' in built_libraries and run('extract-batting-art', [sys.executable, 'extract_batting_art.py', str(apk), str(BUILD)]):
+        if compile_target('BS2-Pitch-Motion', viewer, gui=True):
+            run('test-at-bat-viewer', [sys.executable, 'test_at_bat_viewer.py', str(BUILD / 'BS2-Pitch-Motion.exe')])
     if compile_target('test-menu', ['test_menu.c', 'src/menu.c']):
         run('test-menu', [str(BUILD / 'test-menu.exe')])
 

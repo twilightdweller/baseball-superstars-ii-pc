@@ -6,12 +6,19 @@ lib.bs2_blit.argtypes=[ctypes.POINTER(ctypes.c_uint16),ctypes.c_size_t,ctypes.c_
 def frames(b):
  assert b[:4]==b'PZX\1'
  base=struct.unpack_from('<I',b,4)[0];kind,count,flags=struct.unpack_from('<BHB',b,base)
- if kind!=8 or flags!=0:raise ValueError('Unsupported container variant')
- rawsize,compressed=struct.unpack_from('<II',b,base+4)
- d=zlib.decompress(b[base+12:base+12+compressed]);assert len(d)==rawsize
+ if kind!=8 or flags not in (0,1):raise ValueError('Unsupported container variant')
+ pos=base+4
+ shared=None
+ if flags==1:
+  colors=b[pos];shared=b[pos+1:pos+1+colors*2];pos+=1+colors*2
+ rawsize,compressed=struct.unpack_from('<II',b,pos)
+ d=zlib.decompress(b[pos+8:pos+8+compressed]);assert len(d)==rawsize
  offsets=struct.unpack_from('<'+'I'*count,d)
  for index,off in enumerate(offsets):
-  colors=d[off];pal=d[off+1:off+1+colors*2];pos=off+1+colors*2
+  if shared is None:
+   colors=d[off];pal=d[off+1:off+1+colors*2];pos=off+1+colors*2
+  else:
+   pal=shared;pos=off
   w,h,mode,flag,padding,size,compressed=struct.unpack_from('<HHBBHII',d,pos);pos+=16
   if flag==1:raise ValueError('Unsupported frame variant')
   payload=zlib.decompress(d[pos:pos+compressed]) if compressed else d[pos:pos+size]

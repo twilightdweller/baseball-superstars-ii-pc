@@ -10,7 +10,9 @@ with open(sys.argv[1],'rb') as f:
   if p['p_type']=='PT_LOAD':u.mem_write(p['p_vaddr'],p.data())
 count=0
 with zipfile.ZipFile(sys.argv[2]) as z:
- for name in ['assets/ui/title.pzx','assets/mainui/main_title.pzx']:
+ for resource in ['ui/title','mainui/main_title','stadium/attack','stadium/fence',
+                  'ace/pitcher_celine','ace/batter_medica','ball']:
+  name='assets/'+resource+'.pzx'
   for idx,w,h,pal,payload in frames(z.read(name)):
    expected=render(w,h,pal,payload)
    u.mem_write(0x400000,b'\0'*(w*h*2));u.mem_write(0x500000,payload);u.mem_write(0x600000,pal)
