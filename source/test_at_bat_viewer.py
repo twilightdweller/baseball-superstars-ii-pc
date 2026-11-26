@@ -181,6 +181,36 @@ try:
     wait_for(lambda: 'Pitch 0 | Ready | Balls 0, Strikes 0, Outs 0' in title(), 'direct at-bat startup')
     key(0x1b)
     assert viewer.wait(timeout=5) == 0
+    # Seed 25 selects this fly ball for an immediate swing on the first pitch.
+    viewer = subprocess.Popen([sys.argv[1], '--at-bat', '--seed', '25'], startupinfo=startup)
+    hwnd = wait_for(window, 'fielding test window')
+    assert ui.SetWindowPos(hwnd, None, -16300, -16300, 0, 0, 0x55)
+    ui.SendMessageW(hwnd, 0x100, 0x20, 0)
+    ui.SendMessageW(hwnd, 0x100, ord('X'), 0)
+    wait_for(lambda: '| Fielding |' in title(), 'defensive minimap')
+    region = (121, 115, 359, 302)
+    first = capture(hwnd).crop(region)
+    assert len(first.getcolors(1000) or []) >= 5, 'missing fielders or field lines'
+    wait_for(lambda: ImageChops.difference(first, capture(hwnd).crop(region)).getbbox(), 'fielder movement')
+    wait_for(lambda: 'Fly out | Balls 0, Strikes 0, Outs 1 | Complete | Third baseman' in title(), 'fly out')
+    key(0x20)
+    wait_for(lambda: 'Pitch 0 | Ready | Balls 0, Strikes 0, Outs 1 | Ready | Slot 2: Medica' in title(),
+             'second batter with one out')
+    check_art(2, preview=True)
+    pitch(1, 'Called strike', 'Balls 0, Strikes 1, Outs 1')
+    pitch(2, 'Called strike', 'Balls 0, Strikes 2, Outs 1')
+    pitch(3, 'Called strikeout', 'Balls 0, Strikes 2, Outs 2', True)
+    key(0x20)
+    wait_for(lambda: 'Outs 2 | Ready | Slot 3: Ara' in title(), 'third batter with two outs')
+    pitch(1, 'Called strike', 'Balls 0, Strikes 1, Outs 2')
+    pitch(2, 'Called strike', 'Balls 0, Strikes 2, Outs 2')
+    key(0x20)
+    wait_for(lambda: 'Outs 3 | Complete | Side retired' in title(), 'end of the half')
+    key(0x20)
+    wait_for(lambda: 'Pitch 0 | Ready | Balls 0, Strikes 0, Outs 0' in title(), 'restart after three outs')
+    key(0x1b)
+    assert viewer.wait(timeout=5) == 0
+    print('PASS: A fly out displayed the moving defensive minimap and carried one out into the next batter\'s pitch.')
     # Seed 22 selects a normal foul on the first timed swing of this matchup.
     viewer = subprocess.Popen([sys.argv[1], '--at-bat', '--seed', '22'], startupinfo=startup)
     hwnd = wait_for(window, 'foul test window')
