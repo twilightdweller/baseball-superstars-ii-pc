@@ -64,7 +64,8 @@ def main():
                 f'{index} BITMAP "{(BUILD / bmp).as_posix()}"\n'
                 for index, bmp in enumerate(bitmap_names, 101)) +
                 f'106 RCDATA "{(BUILD / "batted-flight.bin").as_posix()}"\n'
-                f'107 RCDATA "{(BUILD / "fly-outs.bin").as_posix()}"\n', encoding='utf-16')
+                f'107 RCDATA "{(BUILD / "fly-outs.bin").as_posix()}"\n'
+                f'108 RCDATA "{(BUILD / "ground-outs.bin").as_posix()}"\n', encoding='utf-16')
             resource = BUILD / 'batting-art.res'
             compile_resources = subprocess.list2cmdline(
                 ['rc.exe', '/nologo', '/fo', str(resource), str(resource_file)]) + '\nif errorlevel 1 exit /b 1\n'
@@ -80,7 +81,7 @@ def main():
 
     viewer = ['src/' + name + '.c' for name in
               ['pitch_viewer', 'pitch_path', 'pitch_curve', 'projection', 'pitch_scene', 'camera',
-               'taken_pitch', 'pitch_rules', 'pitch_flow', 'batting', 'batted_flight', 'fly_out']]
+               'taken_pitch', 'pitch_rules', 'pitch_flow', 'batting', 'batted_flight', 'fly_out', 'ground_out', 'ball_motion']]
     libraries = {
         'currency': ['currency'], 'state': ['state'], 'title-flow': ['title_flow'],
         'graphics': ['graphics'], 'pitch-curve': ['pitch_curve'], 'projection': ['projection'],
@@ -88,7 +89,7 @@ def main():
         'camera': ['camera', 'projection'],
         'pitch-rules': ['pitch_rules'],
         'pitch-flow': ['pitch_flow'],
-        'taken-pitch': ['fly_out', 'batted_flight', 'batting', 'taken_pitch', 'pitch_rules', 'pitch_flow', 'pitch_scene', 'projection', 'camera', 'pitch_path', 'pitch_curve'],
+        'taken-pitch': ['ball_motion', 'ground_out', 'fly_out', 'batted_flight', 'batting', 'taken_pitch', 'pitch_rules', 'pitch_flow', 'pitch_scene', 'projection', 'camera', 'pitch_path', 'pitch_curve'],
     }
     built_libraries = set()
     for name, sources in libraries.items():
@@ -98,7 +99,9 @@ def main():
     flights = run('extract-batted-flight', [sys.executable, 'extract_batted_flight.py', str(apk), str(BUILD / 'batted-flight.bin')])
     defense = flights and run('extract-fly-outs', [sys.executable, 'extract_fly_outs.py', str(apk),
         str(BUILD / 'batted-flight.bin'), str(BUILD / 'fly-outs.bin')])
-    if defense and 'graphics' in built_libraries and run('extract-batting-art', [sys.executable, 'extract_batting_art.py', str(apk), str(BUILD)]):
+    ground = flights and run('extract-ground-outs', [sys.executable, 'extract_ground_outs.py', str(apk),
+        str(BUILD / 'batted-flight.bin'), str(BUILD / 'ground-outs.bin')])
+    if ground and defense and 'graphics' in built_libraries and run('extract-batting-art', [sys.executable, 'extract_batting_art.py', str(apk), str(BUILD)]):
         if compile_target('BS2-Pitch-Motion', viewer, gui=True):
             run('test-at-bat-viewer', [sys.executable, 'test_at_bat_viewer.py', str(BUILD / 'BS2-Pitch-Motion.exe')])
     if compile_target('test-menu', ['test_menu.c', 'src/menu.c']):
@@ -126,6 +129,8 @@ def main():
         'test_state': [str(original)], 'test_title_flow': [str(original)],
         'test_startup_sequence': [], 'test_graphics': [str(original), str(apk)],
         'test_batted_flight': [str(apk), str(BUILD / 'bs2-taken-pitch.dll'), str(BUILD / 'batted-flight.bin')],
+        'test_ball_motion': [str(apk), str(BUILD / 'bs2-taken-pitch.dll'), str(BUILD / 'batted-flight.bin')],
+        'test_ground_out': [str(apk), str(BUILD / 'bs2-taken-pitch.dll'), str(BUILD)],
         'test_fly_out': [str(apk), str(BUILD / 'bs2-taken-pitch.dll'), str(BUILD)],
         'test_swing': [str(original), str(apk), str(BUILD / 'bs2-taken-pitch.dll')],
         'test_batter_stance': [str(original), str(apk), str(BUILD)],

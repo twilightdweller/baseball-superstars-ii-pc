@@ -145,7 +145,13 @@ try:
     pitch(2, 'Called strike', 'Balls 0, Strikes 2, Outs 0')
     pitch(3, 'Called strikeout', 'Balls 0, Strikes 2, Outs 1', True)
     key(0x20)
-    wait_for(lambda: 'Pitch 0' in title(), 'new appearance after strikeout')
+    wait_for(lambda: 'Outs 1 | Ready | Slot 2: Medica' in title(), 'next batter after opening strikeout')
+    pitch(1, 'Called strike', 'Balls 0, Strikes 1, Outs 1')
+    # Return to the original matchup for the four-ball comparison.
+    key(ord('T'))
+    key(0x26)
+    key(ord('T'))
+    wait_for(lambda: 'Outs 0 | Ready' in title(), 'restart practice for the walk')
     for _ in range(6):
         key(0x27)
     for i in range(1, 5):
@@ -211,6 +217,20 @@ try:
     key(0x1b)
     assert viewer.wait(timeout=5) == 0
     print('PASS: A fly out displayed the moving defensive minimap and carried one out into the next batter\'s pitch.')
+    viewer = subprocess.Popen([sys.argv[1], '--at-bat', '--seed', '46'], startupinfo=startup)
+    hwnd = wait_for(window, 'ground-ball test window')
+    assert ui.SetWindowPos(hwnd, None, -16300, -16300, 0, 0, 0x55)
+    ui.SendMessageW(hwnd, 0x100, 0x20, 0)
+    ui.SendMessageW(hwnd, 0x100, ord('X'), 0)
+    wait_for(lambda: '| Fielding |' in title(), 'ground ball on the defensive minimap')
+    wait_for(lambda: 'Ground out | Balls 0, Strikes 0, Outs 1 | Complete | Out at first' in title(),
+             'ground out after the throw to first')
+    key(0x20)
+    wait_for(lambda: 'Outs 1 | Ready | Slot 2: Medica' in title(), 'next batter after ground out')
+    pitch(1, 'Called strike', 'Balls 0, Strikes 1, Outs 1')
+    key(0x1b)
+    assert viewer.wait(timeout=5) == 0
+    print('PASS: Seed 46 grounder reached first for the out, then Medica took a pitch with one out.')
     # Seed 22 selects a normal foul on the first timed swing of this matchup.
     viewer = subprocess.Popen([sys.argv[1], '--at-bat', '--seed', '22'], startupinfo=startup)
     hwnd = wait_for(window, 'foul test window')
@@ -227,7 +247,8 @@ try:
         if initial_strikes == 0:
             pitch(2, 'Called strike', 'Balls 0, Strikes 2, Outs 0')
             pitch(3, 'Called strikeout', 'Balls 0, Strikes 2, Outs 1', True)
-            key(0x20)
+            key(ord('T'))
+            key(ord('T'))
             wait_for(lambda: 'Pitch 0 | Ready' in title(), 'reset after first foul test')
         else:
             pitch(4, 'Called strikeout', 'Balls 0, Strikes 2, Outs 1', True)

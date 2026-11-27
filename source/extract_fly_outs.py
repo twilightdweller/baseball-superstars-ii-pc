@@ -130,8 +130,23 @@ def minimap(arm):
     return frame
 
 
-def play(archive, group, order, batter, outs, seed, slot=0, capture=False, count=(0, 0)):
+def begin_play(archive, group, order, batter, outs, seed, slot, count):
     arm, ball = defense(archive)
+    for _ in range(order):
+        arm.call(0x9554c, PATTERNS, group)
+    index = arm.call(0x95510, PATTERNS, group)
+    arm.cpu.mem_write(PLAY+4, bytes([*count, outs]))
+    arm.cpu.mem_write(ATT_ENTRY+0x32, bytes([slot]))
+    # Two-batter practice order. The engine still reserves the next slot modulo nine.
+    arm.cpu.mem_write(ATT_ENTRY+0xe, bytes(batter ^ ((i-slot) % 2) for i in range(9)))
+    arm.put(0x2fd35c, seed)
+    arm.call(0x163c0c, group, index)
+    arm.call(0xad114, DEFENSE)
+    return arm, ball
+
+
+def play(archive, group, order, batter, outs, seed, slot=0, capture=False, count=(0, 0), observe=None):
+    arm, ball = begin_play(archive, group, order, batter, outs, seed, slot, count)
     events = {}
     tick = 0
 
@@ -147,16 +162,8 @@ def play(archive, group, order, batter, outs, seed, slot=0, capture=False, count
 
     arm.hook(0xa5ab0, catch)
     arm.hook(0xae1dc, judge)
-    for _ in range(order):
-        arm.call(0x9554c, PATTERNS, group)
-    index = arm.call(0x95510, PATTERNS, group)
-    arm.cpu.mem_write(PLAY+4, bytes([*count, outs]))
-    arm.cpu.mem_write(ATT_ENTRY+0x32, bytes([slot]))
-    # Two-batter practice order. The engine still reserves the next slot modulo nine.
-    arm.cpu.mem_write(ATT_ENTRY+0xe, bytes(batter ^ ((i-slot) % 2) for i in range(9)))
-    arm.put(0x2fd35c, seed)
-    arm.call(0x163c0c, group, index)
-    arm.call(0xad114, DEFENSE)
+    if observe:
+        observe(arm, ball)
     frame = minimap(arm) if capture else None
     frames = bytearray()
     bounce = arm.word(ball+0x7cc)
@@ -184,7 +191,7 @@ def play(archive, group, order, batter, outs, seed, slot=0, capture=False, count
             assert bytes(arm.cpu.mem_read(PLAY+0x142, 2)) == bytes(2)
             record = (group, order, batter, outs, defender, caught, events['out'], tick)
             return record, bytes(frames)
-    raise RuntimeError(f'Defense did not end: group {group}, order {order}, index {index}, outs {outs}')
+    raise RuntimeError(f'Defense did not end: group {group}, order {order}, outs {outs}')
 
 
 def seed_for(flights, group, order):

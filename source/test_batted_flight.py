@@ -9,9 +9,16 @@ from extract_batted_flight import BALL, FIELD_BALL, NORMAL_GROUPS, PATTERNS, PLA
 class Flight(C.Structure):
     _fields_ = [('samples', C.c_void_p), ('count', C.c_uint), ('untouched_foul', C.c_uint)]
 
+class MovingBall(C.Structure):
+    _fields_ = [('flight', C.POINTER(Flight)), ('cursor', C.c_uint), ('stopped', C.c_uint),
+                ('disabled', C.c_uint), ('position', C.c_int32*3)]
+
 native = C.CDLL(sys.argv[2])
 native.bs2_open_flight.argtypes = [C.c_void_p, C.c_size_t, C.c_int, C.POINTER(C.c_uint), C.POINTER(Flight)]
 native.bs2_flight_position.argtypes = [C.POINTER(Flight), C.c_uint, C.c_void_p]
+native.bs2_start_ball.argtypes = [C.POINTER(MovingBall), C.POINTER(Flight)]
+native.bs2_move_ball.argtypes = [C.POINTER(MovingBall)]
+native.bs2_move_ball.restype = None
 data = Path(sys.argv[3]).read_bytes()
 with zipfile.ZipFile(sys.argv[1]) as archive:
     arm = stadium(archive)
@@ -31,11 +38,16 @@ for group in NORMAL_GROUPS:
         arm.put(0x2fd35c, seed)
         arm.call(0xaa910, group, index)
         assert flight.count == arm.word(BALL+0x9b0)
+        ball = MovingBall()
+        assert native.bs2_start_ball(C.byref(ball), C.byref(flight)) == 0
         for tick in range(flight.count+2):
             arm.call(0xb8dd0, BALL)
             assert native.bs2_flight_position(C.byref(flight), tick, point) == 0
             expected = struct.unpack('<3i', arm.cpu.mem_read(BALL+0x9c0, 12))
             assert tuple(point) == expected, (group, variant, index, tick, tuple(point), expected)
+            native.bs2_move_ball(C.byref(ball))
+            assert tuple(ball.position) == expected and ball.cursor == arm.word(BALL+0x9ac)
+            assert ball.stopped == arm.cpu.mem_read(BALL+0x9b4, 1)[0]
             ticks += 1
         field_ticks = launch_field(arm, group, index)
         for _ in range(field_ticks):

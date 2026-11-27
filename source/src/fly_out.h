@@ -21,6 +21,7 @@ int bs2_fly_map_frame(const uint8_t *data, size_t size, const BS2FlyOut *fly,
 int bs2_find_fly_out(const uint8_t *data, size_t size, int group, unsigned order,
                      int batter, unsigned outs, BS2FlyOut *result);
 int bs2_step_fly_out(BS2AtBat *at_bat, const BS2FlyOut *fly, unsigned tick);
+int bs2_finish_field_out(BS2AtBat *at_bat);
 int bs2_begin_next_batter(BS2AtBat *at_bat);
 
 #endif

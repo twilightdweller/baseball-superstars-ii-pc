@@ -53,16 +53,21 @@ int bs2_step_fly_out(BS2AtBat *ab, const BS2FlyOut *fly, unsigned tick) {
         p[6] != fly->starting_outs + (p[0x1f] != 0)) return -1;
     if (tick < fly->out_tick) return 0;
     if (!p[0x1f]) {
-        p[0x1f] = 1; /* CCLDefenseEnv::JudgeFlyOut(false), 0xae1dc. */
+        p[0x1e] = p[0x1f] = 1; /* CCLDefenseEnv::JudgeFlyOut(false), 0xae1dc. */
         p[0xb] = 13;
         ++p[6]; /* CCLDefenseMain::JudgeProcess, ordinary out. */
     }
     if (tick < fly->end_tick) return 0;
+    return bs2_finish_field_out(ab);
+}
+
+int bs2_finish_field_out(BS2AtBat *ab) {
+    if (!ab || ab->batting_slot >= 9 || ab->play[6] > 3) return -1;
     if (!ab->batter_reserved) {
         ab->batter_reserved = 1; /* EndOfDefense -> RsvNextBatter(0), 0x16cb52. */
         ab->reserved_slot = (ab->batting_slot + 1) % 9;
     }
-    return p[6] == 3 ? 25 : 14; /* NextStateAtDefenseEnd, empty bases. */
+    return ab->play[6] == 3 ? 25 : 14; /* NextStateAtDefenseEnd, empty bases. */
 }
 
 int bs2_begin_next_batter(BS2AtBat *ab) {
@@ -72,6 +77,6 @@ int bs2_begin_next_batter(BS2AtBat *ab) {
     ab->batting_slot = ab->reserved_slot;
     ab->batter_reserved = ab->defense_action = 0;
     ab->play[0x0b] = ab->play[0x0c] = 0;
-    ab->play[0x10] = ab->play[0x11] = ab->play[0x1c] = ab->play[0x1f] = 0;
+    ab->play[0x10] = ab->play[0x11] = ab->play[0x1c] = ab->play[0x1e] = ab->play[0x1f] = 0;
     return 0;
 }

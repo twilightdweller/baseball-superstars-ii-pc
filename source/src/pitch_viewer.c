@@ -8,7 +8,8 @@
 #include "batting.h"
 #include "pitch_rules.h"
 #include "batted_flight.h"
-#include "fly_out.h"
+#include "ground_out.h"
+#include "ball_motion.h"
 #include <string.h>
 #include <stdlib.h>
 #include "pitch_records.h"
@@ -18,17 +19,24 @@ static int selected=0,preset=1,frames=0,ready=0;
 static DWORD started;
 static BS2AtBat at_bat;
 static BS2StrikeZone zone;
-enum PitchPhase { AIM, DELIVERY, JUDGMENT, COMPLETE, BATTED, CONTACT, FOUL, FLY_FIELDING, FLY_COMPLETE };
+enum PitchPhase { AIM, DELIVERY, JUDGMENT, COMPLETE, BATTED, CONTACT, FOUL, FIELDING, FIELD_COMPLETE };
 static enum PitchPhase phase;
 static int taking, aim, pitch_number, last_call;
 static DWORD judge_started, swing_started, contact_started;
 static unsigned variant_order[24];
 static BS2Flight flight;
+static BS2MovingBall moving_ball;
+static unsigned motion_ticks;
 static const unsigned char *flight_data;
 static size_t flight_size, fly_size;
 static const uint8_t *fly_data;
-static BS2FlyOut fly;
-static int have_fly, connected_outs, first_preset;
+static BS2FlyOut field;
+static BS2GroundOut ground;
+static BS2GroundDefense ground_defense;
+static const uint8_t *ground_data;
+static size_t ground_size;
+static int is_ground;
+static int have_field, advanced_lineup, first_preset;
 static DWORD field_started;
 static const char *const fielders[] = {"Pitcher", "Catcher", "First baseman", "Second baseman",
  "Third baseman", "Shortstop", "Outfielder", "Outfielder", "Outfielder"};
@@ -41,7 +49,7 @@ static const char *call_name[] = {"Ready", "Called strike", "Ball", "Walk", "", 
 
 static void reset_appearance(void) {
  at_bat = (BS2AtBat){0};
- have_fly=0; connected_outs=0; first_preset=preset;
+ have_field=0; advanced_lineup=0; first_preset=preset;
  at_bat.play[0x12d] = 9;
  swing_frame = -1; swing_checked = 0; swing_seed = fixed_practice_seed ? practice_seed : GetTickCount();
  aim = 0; pitch_number = 0; last_call = 0; phase = AIM;
@@ -71,11 +79,11 @@ static void replay(void){
  frames=r->frames+3;started=GetTickCount();
 }
 static void take_or_restart(void) {
- if(phase==FLY_COMPLETE || (phase==COMPLETE && connected_outs && last_call==5)){
+ if(phase==FIELD_COMPLETE || (phase==COMPLETE && last_call==5)){
   if(at_bat.play[6]<3 && bs2_begin_next_batter(&at_bat)==0){
-   connected_outs=1;
+   advanced_lineup=1;
    preset=at_bat.batting_slot%2 ? 3-first_preset : first_preset;
-   swing_frame=-1; swing_checked=0; have_fly=0;
+   swing_frame=-1; swing_checked=0; have_field=0;
    aim=0; pitch_number=0; last_call=0; phase=AIM;
   }else{preset=first_preset;reset_appearance();}
   replay();return;
@@ -97,8 +105,8 @@ static void swing(void) {
 
 static const char *pitch_result(void) {
  if(phase==BATTED)return "Ball in play";
- if(phase==FLY_COMPLETE || (phase==FLY_FIELDING && at_bat.play[0x1f]))return "Fly out";
- if(phase==FLY_FIELDING)return "Fielding";
+ if(phase==FIELD_COMPLETE || (phase==FIELDING && at_bat.play[0xb]==13))return is_ground?"Ground out":"Fly out";
+ if(phase==FIELDING)return "Fielding";
  if(phase==CONTACT)return "Contact";
  if(phase==FOUL)return "Foul ball";
  if(phase==DELIVERY)return swing_frame>=0?"Swing":"In flight";
@@ -120,8 +128,15 @@ static void update_appearance(void) {
    if(bs2_open_flight(flight_data,flight_size,contact_pattern,&variant_order[contact_pattern],&flight)){
     ready=0; phase=AIM; return;
    }
-   have_fly=bs2_find_fly_out(fly_data,fly_size,contact_pattern,order,preset==1,at_bat.play[6],&fly);
-   if(have_fly<0){ready=0;phase=AIM;return;}
+   is_ground=contact_pattern>=3 && contact_pattern<=5;
+   if(is_ground){
+    have_field=bs2_find_ground_out(ground_data,ground_size,contact_pattern,order,preset==1,at_bat.play[6],&ground);
+    ground_defense=(BS2GroundDefense){0};
+    if(have_field==1)field=ground.field;
+   }else have_field=bs2_find_fly_out(fly_data,fly_size,contact_pattern,order,preset==1,at_bat.play[6],&field);
+   if(have_field<0){ready=0;phase=AIM;return;}
+   if(bs2_start_ball(&moving_ball,&flight)){ready=0;phase=AIM;return;}
+   bs2_move_ball(&moving_ball);motion_ticks=1;
    contact_started=now; phase=BATTED; return;
   }
  }
@@ -130,19 +145,27 @@ static void update_appearance(void) {
   if(last_call<1){last_call=0;ready=0;phase=AIM;return;}
   judge_started=now;phase=JUDGMENT;
  }
+ if(phase==BATTED){
+  unsigned elapsed_ticks=(now-contact_started)/20u+1;
+  while(motion_ticks<elapsed_ticks && !moving_ball.stopped){
+   bs2_move_ball(&moving_ball);
+   ++motion_ticks;
+  }
+ }
  if(phase==BATTED && (now-contact_started)/20u>=flight.count){
-  if(have_fly){field_started=contact_started+flight.count*20u;phase=FLY_FIELDING;}
+  if(have_field){field_started=contact_started+flight.count*20u;phase=FIELDING;}
   else if(flight.untouched_foul){
    at_bat.play[0x1c]=1;
    bs2_increment_strike_to_two(at_bat.play); /* EndOfDefense, 0x16cb58. */
    phase=FOUL;
   }else phase=CONTACT;
  }
- if(phase==FLY_FIELDING){
+ if(phase==FIELDING){
   unsigned field_tick=(now-field_started)/20u+1;
-  int next=bs2_step_fly_out(&at_bat,&fly,field_tick);
+  int next=is_ground?bs2_step_ground_out(&at_bat,&ground_defense,&ground,ground_data,ground_size,field_tick)
+                    :bs2_step_fly_out(&at_bat,&field,field_tick);
   if(next<0){ready=0;phase=AIM;}
-  else if(next)phase=FLY_COMPLETE;
+  else if(next)phase=FIELD_COMPLETE;
  }
  if(phase==JUDGMENT){
   int state=bs2_taken_pitch_next_state(&at_bat,(now-judge_started)/20u,flow_effect,NULL);
@@ -161,16 +184,16 @@ static void update_title(HWND window) {
  char title[180], detail[64]="";
  if(!taking){SetWindowTextA(window,"BS2 Pitch Motion");return;}
  if(phase==CONTACT)describe_contact(detail,sizeof(detail));
- if(phase==FLY_COMPLETE)snprintf(detail,sizeof(detail),"%s | %s",fielders[fly.fielder],
+ if(phase==FIELD_COMPLETE)snprintf(detail,sizeof(detail),"%s | %s",is_ground?"Out at first":fielders[field.fielder],
   at_bat.play[6]==3?"Side retired":"Next batter ready");
- if(phase==COMPLETE && connected_outs && last_call==5 && at_bat.play[6]==3)
+ if(phase==COMPLETE && last_call==5 && at_bat.play[6]==3)
   snprintf(detail,sizeof(detail),"Side retired");
- if(phase==AIM && connected_outs && pitch_number==0)snprintf(detail,sizeof(detail),"Slot %u: %s",
+ if(phase==AIM && advanced_lineup && pitch_number==0)snprintf(detail,sizeof(detail),"Slot %u: %s",
   (unsigned)at_bat.batting_slot+1,preset==1?"Ara":"Medica");
  snprintf(title,sizeof(title),"BS2 At-Bat | Pitch %d | %s | Balls %u, Strikes %u, Outs %u%s%s%s",
           pitch_number,pitch_result(),
           (unsigned)at_bat.play[5],(unsigned)at_bat.play[4],(unsigned)at_bat.play[6],
-          (phase==COMPLETE || phase==FLY_COMPLETE)?" | Complete":(phase==AIM || phase==FOUL)?" | Ready":"",detail[0]?" | ":"",detail);
+          (phase==COMPLETE || phase==FIELD_COMPLETE)?" | Complete":(phase==AIM || phase==FOUL)?" | Ready":"",detail[0]?" | ":"",detail);
  SetWindowTextA(window,title);
 }
 static void label(int x,int y,const char *s,COLORREF color){
@@ -179,7 +202,7 @@ static void label(int x,int y,const char *s,COLORREF color){
 }
 static void draw_defense_map(unsigned tick) {
  const uint8_t *commands;
- int count=bs2_fly_map_frame(fly_data,fly_size,&fly,tick,&commands);
+ int count=bs2_fly_map_frame(is_ground?ground_data:fly_data,is_ground?ground_size:fly_size,&field,tick,&commands);
  RECT screen={0,0,480,320};
  FillRect(canvas,&screen,(HBRUSH)GetStockObject(BLACK_BRUSH));
  if(count<0)return;
@@ -241,20 +264,18 @@ static void render(void){
    if(frame>=frames)frame=frames-1;
   }
   BS2Point2 p;
-  if(taking && (phase==BATTED || phase==CONTACT || phase==FOUL || phase==FLY_FIELDING || phase==FLY_COMPLETE)){
-   BS2Point3 position;
-   bs2_flight_position(&flight,(GetTickCount()-contact_started)/20u,&position);
-   p=bs2_pitch_screen_pixel(&position,&camera);
+  if(taking && (phase==BATTED || phase==CONTACT || phase==FOUL || phase==FIELDING || phase==FIELD_COMPLETE)){
+   p=bs2_pitch_screen_pixel(&moving_ball.position,&camera);
   }else if(taking)p=bs2_pitch_screen_pixel(&path[frame],&camera);
   else{bs2_project_point(&p,&path[frame],&camera);p=(BS2Point2){px(p),py(p)};}
-  if(phase!=FLY_FIELDING && phase!=FLY_COMPLETE){
+  if(phase!=FIELDING && phase!=FIELD_COMPLETE){
    old_art=SelectObject(art_dc,ball_image);
    TransparentBlt(canvas,p.x-8,p.y-8,17,17,art_dc,0,0,17,17,RGB(255,0,255));
    SelectObject(art_dc,old_art);
   }
  }
  if(taking){
-  if(phase==FLY_FIELDING || phase==FLY_COMPLETE)draw_defense_map((GetTickCount()-field_started)/20u+1);
+  if(phase==FIELDING || phase==FIELD_COMPLETE)draw_defense_map((GetTickCount()-field_started)/20u+1);
   char info[180];
   snprintf(info,sizeof(info),"Pitch %d    Balls %u    Strikes %u    Outs %u",pitch_number,
            (unsigned)at_bat.play[5],(unsigned)at_bat.play[4],(unsigned)at_bat.play[6]);
@@ -262,18 +283,23 @@ static void render(void){
   snprintf(info,sizeof(info),"%s    Target offset %+d",pitch_result(),aim);
   if(phase==CONTACT)describe_contact(info,sizeof(info));
   label(12,28,info,RGB(255,205,105));
-  if(phase==FLY_FIELDING || phase==FLY_COMPLETE){
+  if(phase==FIELDING || phase==FIELD_COMPLETE){
    unsigned tick=(GetTickCount()-field_started)/20u+1;
-   snprintf(info,sizeof(info),"%s%s",fielders[fly.fielder],tick>=fly.catch_tick?" caught the fly ball.":" tracking the ball.");
+   if(is_ground){
+    if(ground_defense.received_tick)snprintf(info,sizeof(info),"First baseman received the throw. Out at first.");
+    else if(tick>=ground.throw_tick)snprintf(info,sizeof(info),"%s throws to first.",fielders[field.fielder]);
+    else snprintf(info,sizeof(info),"%s %s the ground ball.",fielders[field.fielder],
+      ground_defense.pickup_tick?"fielded":"tracking");
+   }else snprintf(info,sizeof(info),"%s%s",fielders[field.fielder],tick>=field.catch_tick?" caught the fly ball.":" tracking the ball.");
    label(12,48,info,RGB(212,223,233));
-   if(phase==FLY_COMPLETE)label(12,84,at_bat.play[6]==3?"Side retired. Space: restart practice":"Space: next batter",RGB(235,241,246));
-  }else if(phase==AIM && connected_outs){
+   if(phase==FIELD_COMPLETE)label(12,84,at_bat.play[6]==3?"Side retired. Space: restart practice":"Space: next batter",RGB(235,241,246));
+  }else if(phase==AIM && advanced_lineup){
    snprintf(info,sizeof(info),"Batting %u: %s    Space: pitch",(unsigned)at_bat.batting_slot+1,preset==1?"Ara":"Medica");
    label(12,48,info,RGB(212,223,233));
   }else if(phase==COMPLETE){
-   if(connected_outs && last_call==5 && at_bat.play[6]==3)
+   if(last_call==5 && at_bat.play[6]==3)
     snprintf(info,sizeof(info),"Side retired. Space: restart practice");
-   else if(connected_outs && last_call==5)
+   else if(last_call==5)
     snprintf(info,sizeof(info),"Space: next batter (slot %u)",(unsigned)at_bat.reserved_slot+1);
    else snprintf(info,sizeof(info),"Lineup slot %u reserved. Space: new at-bat",(unsigned)at_bat.reserved_slot+1);
    label(12,48,info,RGB(212,223,233));
@@ -322,6 +348,11 @@ static LRESULT CALLBACK proc(HWND window,UINT message,WPARAM w,LPARAM l){
   fly_data=(const uint8_t *)LockResource(LoadResource(instance,raw));
   fly_size=SizeofResource(instance,raw);
   if(!fly_data || !fly_size)return -1;
+  raw=FindResourceA(instance,MAKEINTRESOURCEA(108),MAKEINTRESOURCEA(10));
+  if(!raw)return -1;
+  ground_data=(const uint8_t *)LockResource(LoadResource(instance,raw));
+  ground_size=SizeofResource(instance,raw);
+  if(!ground_data || !ground_size)return -1;
   art_dc=CreateCompatibleDC(canvas);
   fields[0]=load_art(instance,FIELD_RIGHT);
   fields[1]=load_art(instance,FIELD_LEFT);
