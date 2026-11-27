@@ -231,6 +231,30 @@ try:
     key(0x1b)
     assert viewer.wait(timeout=5) == 0
     print('PASS: Seed 46 grounder reached first for the out, then Medica took a pitch with one out.')
+    # Ara beats the throw on seed 5 even after taking the opening strike.
+    viewer = subprocess.Popen([sys.argv[1], '--at-bat', '--seed', '5'], startupinfo=startup)
+    hwnd = wait_for(window, 'safe-at-first test window')
+    assert ui.SetWindowPos(hwnd, None, -16300, -16300, 0, 0, 0x55)
+    pitch(1, 'Called strike', 'Balls 0, Strikes 1, Outs 0')
+    ui.SendMessageW(hwnd, 0x100, 0x20, 0)
+    ui.SendMessageW(hwnd, 0x100, ord('X'), 0)
+    wait_for(lambda: 'Safe at first | Balls 0, Strikes 1, Outs 0 | Complete' in title()
+             and 'On first: Ara' in title(), 'Ara beats the throw')
+    key(0x20)
+    wait_for(lambda: 'Balls 0, Strikes 0, Outs 0 | Ready | Slot 2: Medica | On first: Ara' in title(),
+             'new batter and count with Ara on first')
+    key(0x20)
+    wait_for(lambda: 'Called strike | Balls 0, Strikes 1, Outs 0 | Ready | On first: Ara' in title(),
+             'Medica takes a strike with Ara still on first')
+    key(0x20)
+    wait_for(lambda: 'Called strike | Balls 0, Strikes 2, Outs 0 | Ready | On first: Ara' in title(),
+             'two strikes with Ara on first')
+    key(0x20)
+    wait_for(lambda: 'Called strikeout | Balls 0, Strikes 2, Outs 1 | Complete | On first: Ara' in title(),
+             'strikeout leaves the runner on first')
+    key(0x1b)
+    assert viewer.wait(timeout=5) == 0
+    print('PASS: Ara beat the throw, then stayed on first through Medica\'s first called strike.')
     # Seed 22 selects a normal foul on the first timed swing of this matchup.
     viewer = subprocess.Popen([sys.argv[1], '--at-bat', '--seed', '22'], startupinfo=startup)
     hwnd = wait_for(window, 'foul test window')

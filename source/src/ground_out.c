@@ -9,7 +9,7 @@ typedef struct {
 } CollisionQuery;
 
 _Static_assert(sizeof(CollisionQuery) == 76, "ground collision resource layout");
-_Static_assert(sizeof(BS2GroundOut) == 20, "ground play resource layout");
+_Static_assert(sizeof(BS2GroundPlay) == 20, "ground play resource layout");
 
 typedef struct {
     BS2RunnerArrival runner;
@@ -47,15 +47,17 @@ int bs2_runner_at_base(const BS2RunnerArrival *runner) {
            p->x == runner->base.x && p->z == runner->base.z;
 }
 
-int bs2_find_ground_out(const uint8_t *data, size_t size, int group, unsigned order,
-                        int batter, unsigned outs, BS2GroundOut *result) {
+int bs2_find_ground_play(const uint8_t *data, size_t size, int group, unsigned order,
+                        int batter, unsigned outs, BS2GroundPlay *result) {
     uint32_t count;
-    if (!result || !data || size < 8 || memcmp(data, "GRO3", 4)) return -1;
+    if (!result || !data || size < 8) return -1;
+    int legacy = !memcmp(data, "GRO3", 4);
+    if (!legacy && memcmp(data, "GRP4", 4)) return -1;
     memcpy(&count, data+4, sizeof(count));
     if (count > (size-8)/sizeof(*result)) return -1;
     size_t table_end = 8+count*sizeof(*result);
     for (size_t offset=8; offset<table_end; offset+=sizeof(*result)) {
-        BS2GroundOut play;
+        BS2GroundPlay play;
         memcpy(&play, data+offset, sizeof(play));
         const BS2FlyOut *f = &play.field;
         if (f->group != group || f->order != order || f->batter != batter || f->starting_outs != outs)
@@ -65,14 +67,14 @@ int bs2_find_ground_out(const uint8_t *data, size_t size, int group, unsigned or
             f->catch_tick >= play.throw_tick || play.throw_tick >= f->out_tick ||
             f->out_tick > f->end_tick || !play.query_count || play.query_offset < table_end ||
             f->map_offset >= size || play.query_offset > f->map_offset ||
-            play.query_count*sizeof(CollisionQuery)+sizeof(FirstBaseRun) != f->map_offset-play.query_offset) return -1;
+            play.query_count*sizeof(CollisionQuery)+sizeof(FirstBaseRun)+(legacy ? 0 : 4) != f->map_offset-play.query_offset) return -1;
         *result = play;
         return 1;
     }
     return 0;
 }
 
-int bs2_step_ground_out(BS2AtBat *ab, BS2GroundDefense *defense, const BS2GroundOut *ground,
+int bs2_step_ground_play(BS2AtBat *ab, BS2GroundDefense *defense, const BS2GroundPlay *ground,
                         const uint8_t *data, size_t size, unsigned tick) {
     if (!ab || !defense || !ground || !data || ab->batting_slot >= 9 ||
         !ab->play[0x11] || ab->play[0x1c] || ab->play[0x1f] ||
@@ -83,6 +85,16 @@ int bs2_step_ground_out(BS2AtBat *ab, BS2GroundDefense *defense, const BS2Ground
     if (field->starting_outs >= 3 || p[6] != field->starting_outs + (p[0xb] == 13)) return -1;
 
     size_t run_offset = ground->query_offset+ground->query_count*sizeof(CollisionQuery);
+    uint32_t recorded_call = 13; /* GRO3 only contained verified outs. */
+    if (size < 8) return -1;
+    if (!memcmp(data, "GRP4", 4)) {
+        if (size-run_offset < sizeof(recorded_call)) return -1;
+        memcpy(&recorded_call, data+run_offset, sizeof(recorded_call));
+        if (recorded_call != 6 && recorded_call != 13) return -1;
+        run_offset += sizeof(recorded_call);
+    } else if (memcmp(data, "GRO3", 4)) return -1;
+    if (ab->first_base_slot && (!defense->runner_ticks || ab->first_base_slot != ab->batting_slot+1))
+        return -1;
     FirstBaseRun run;
     if (size-run_offset < sizeof(run) || !field->out_tick) return -1;
     memcpy(&run, data+run_offset, sizeof(run));
@@ -95,6 +107,10 @@ int bs2_step_ground_out(BS2AtBat *ab, BS2GroundDefense *defense, const BS2Ground
         bs2_move_runner_to_first(&defense->runner_position, &run.runner.destination, run.speed);
         ++defense->runner_ticks;
     }
+
+    run.runner.position = defense->runner_position;
+    int on_first = bs2_runner_at_base(&run.runner);
+    if (on_first && recorded_call == 6) ab->first_base_slot = ab->batting_slot+1;
 
     while (defense->next_query < ground->query_count) {
         CollisionQuery q;
@@ -116,11 +132,11 @@ int bs2_step_ground_out(BS2AtBat *ab, BS2GroundDefense *defense, const BS2Ground
         p[0xb] = 6;
     }
     if (tick < field->out_tick) return 0;
-    if (p[0xb] != 13) {
-        run.runner.position = defense->runner_position;
-        if (bs2_runner_at_base(&run.runner)) return -1;
+    /* The minimap is recorded. Reject a race that disagrees with its original ending. */
+    if ((on_first ? 6u : 13u) != recorded_call) return -1;
+    if (!on_first && p[0xb] != 13) {
         p[0xb] = 13; /* CheckRunnerSafeOrOut -> JudgeOut for the batter-runner at first. */
         ++p[6];
     }
-    return tick < field->end_tick ? 0 : bs2_finish_field_out(ab);
+    return tick < field->end_tick ? 0 : bs2_finish_field_play(ab);
 }

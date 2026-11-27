@@ -31,7 +31,7 @@ static const unsigned char *flight_data;
 static size_t flight_size, fly_size;
 static const uint8_t *fly_data;
 static BS2FlyOut field;
-static BS2GroundOut ground;
+static BS2GroundPlay ground;
 static BS2GroundDefense ground_defense;
 static const uint8_t *ground_data;
 static size_t ground_size;
@@ -103,9 +103,17 @@ static void swing(void) {
  swing_frame=(int)tick; swing_started=now;
 }
 
+static const char *first_base_runner(void) {
+ if(!at_bat.first_base_slot || at_bat.play[6]==3)return NULL;
+ int runner_preset=(at_bat.first_base_slot-1)%2 ? 3-first_preset : first_preset;
+ return runner_preset==1?"Ara":"Medica";
+}
+
 static const char *pitch_result(void) {
  if(phase==BATTED)return "Ball in play";
- if(phase==FIELD_COMPLETE || (phase==FIELDING && at_bat.play[0xb]==13))return is_ground?"Ground out":"Fly out";
+ if(phase==FIELD_COMPLETE || (phase==FIELDING && (at_bat.play[0xb]==13 ||
+    (is_ground && ground_defense.received_tick && at_bat.first_base_slot))))
+  return !is_ground?"Fly out":at_bat.first_base_slot?"Safe at first":"Ground out";
  if(phase==FIELDING)return "Fielding";
  if(phase==CONTACT)return "Contact";
  if(phase==FOUL)return "Foul ball";
@@ -129,8 +137,9 @@ static void update_appearance(void) {
     ready=0; phase=AIM; return;
    }
    is_ground=contact_pattern>=3 && contact_pattern<=5;
-   if(is_ground){
-    have_field=bs2_find_ground_out(ground_data,ground_size,contact_pattern,order,preset==1,at_bat.play[6],&ground);
+   if(at_bat.first_base_slot)have_field=0;
+   else if(is_ground){
+    have_field=bs2_find_ground_play(ground_data,ground_size,contact_pattern,order,preset==1,at_bat.play[6],&ground);
     ground_defense=(BS2GroundDefense){0};
     if(have_field==1)field=ground.field;
    }else have_field=bs2_find_fly_out(fly_data,fly_size,contact_pattern,order,preset==1,at_bat.play[6],&field);
@@ -153,8 +162,11 @@ static void update_appearance(void) {
   }
  }
  if(phase==BATTED && (now-contact_started)/20u>=flight.count){
-  if(have_field){field_started=contact_started+flight.count*20u;phase=FIELDING;}
-  else if(flight.untouched_foul){
+  if(have_field){
+   at_bat.play[0xb]=at_bat.play[0x1e]=at_bat.play[0x1f]=0;
+   field_started=contact_started+flight.count*20u;phase=FIELDING;
+  }
+  else if(!at_bat.first_base_slot && flight.untouched_foul){
    at_bat.play[0x1c]=1;
    bs2_increment_strike_to_two(at_bat.play); /* EndOfDefense, 0x16cb58. */
    phase=FOUL;
@@ -162,7 +174,7 @@ static void update_appearance(void) {
  }
  if(phase==FIELDING){
   unsigned field_tick=(now-field_started)/20u+1;
-  int next=is_ground?bs2_step_ground_out(&at_bat,&ground_defense,&ground,ground_data,ground_size,field_tick)
+  int next=is_ground?bs2_step_ground_play(&at_bat,&ground_defense,&ground,ground_data,ground_size,field_tick)
                     :bs2_step_fly_out(&at_bat,&field,field_tick);
   if(next<0){ready=0;phase=AIM;}
   else if(next)phase=FIELD_COMPLETE;
@@ -183,8 +195,9 @@ static void describe_contact(char *text, size_t size) {
 static void update_title(HWND window) {
  char title[180], detail[64]="";
  if(!taking){SetWindowTextA(window,"BS2 Pitch Motion");return;}
- if(phase==CONTACT)describe_contact(detail,sizeof(detail));
- if(phase==FIELD_COMPLETE)snprintf(detail,sizeof(detail),"%s | %s",is_ground?"Out at first":fielders[field.fielder],
+ if(phase==CONTACT && at_bat.first_base_slot)snprintf(detail,sizeof(detail),"Occupied-base play unresolved");
+ else if(phase==CONTACT)describe_contact(detail,sizeof(detail));
+ if(phase==FIELD_COMPLETE)snprintf(detail,sizeof(detail),"%s | %s",is_ground?(at_bat.first_base_slot?"Reached first":"Out at first"):fielders[field.fielder],
   at_bat.play[6]==3?"Side retired":"Next batter ready");
  if(phase==COMPLETE && last_call==5 && at_bat.play[6]==3)
   snprintf(detail,sizeof(detail),"Side retired");
@@ -194,6 +207,11 @@ static void update_title(HWND window) {
           pitch_number,pitch_result(),
           (unsigned)at_bat.play[5],(unsigned)at_bat.play[4],(unsigned)at_bat.play[6],
           (phase==COMPLETE || phase==FIELD_COMPLETE)?" | Complete":(phase==AIM || phase==FOUL)?" | Ready":"",detail[0]?" | ":"",detail);
+ const char *runner=first_base_runner();
+ if(runner){
+  size_t used=strlen(title);
+  snprintf(title+used,sizeof(title)-used," | On first: %s",runner);
+ }
  SetWindowTextA(window,title);
 }
 static void label(int x,int y,const char *s,COLORREF color){
@@ -277,16 +295,20 @@ static void render(void){
  if(taking){
   if(phase==FIELDING || phase==FIELD_COMPLETE)draw_defense_map((GetTickCount()-field_started)/20u+1);
   char info[180];
-  snprintf(info,sizeof(info),"Pitch %d    Balls %u    Strikes %u    Outs %u",pitch_number,
-           (unsigned)at_bat.play[5],(unsigned)at_bat.play[4],(unsigned)at_bat.play[6]);
+  const char *runner=first_base_runner();
+  snprintf(info,sizeof(info),"Pitch %d    Balls %u    Strikes %u    Outs %u%s%s",pitch_number,
+           (unsigned)at_bat.play[5],(unsigned)at_bat.play[4],(unsigned)at_bat.play[6],
+           runner?"    On first: ":"",runner?runner:"");
   label(12,8,info,RGB(235,241,246));
   snprintf(info,sizeof(info),"%s    Target offset %+d",pitch_result(),aim);
-  if(phase==CONTACT)describe_contact(info,sizeof(info));
+  if(phase==CONTACT && at_bat.first_base_slot)snprintf(info,sizeof(info),"Occupied-base play unresolved");
+  else if(phase==CONTACT)describe_contact(info,sizeof(info));
   label(12,28,info,RGB(255,205,105));
   if(phase==FIELDING || phase==FIELD_COMPLETE){
    unsigned tick=(GetTickCount()-field_started)/20u+1;
    if(is_ground){
-    if(ground_defense.received_tick)snprintf(info,sizeof(info),"First baseman received the throw. Out at first.");
+    if(ground_defense.received_tick)snprintf(info,sizeof(info),"%s",
+      at_bat.first_base_slot?"The runner beat the throw to first.":"First baseman received the throw. Out at first.");
     else if(tick>=ground.throw_tick)snprintf(info,sizeof(info),"%s throws to first.",fielders[field.fielder]);
     else snprintf(info,sizeof(info),"%s %s the ground ball.",fielders[field.fielder],
       ground_defense.pickup_tick?"fielded":"tracking");

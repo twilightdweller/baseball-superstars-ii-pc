@@ -1,4 +1,4 @@
-"""Extract empty-base throws that the original defense judges out at first."""
+"""Extract empty-base ground plays that the original defense resolves at first."""
 import struct
 import sys
 import zipfile
@@ -15,7 +15,7 @@ RECORD = struct.Struct('<8BIBBHI')
 QUERY = struct.Struct('<3Bx18i')
 
 
-def ground_play(archive, group, order, batter, outs, seed, slot=0, count=(0, 0), observe=None):
+def ground_play(archive, group, order, batter, outs, seed, slot=0, count=(0, 0), observe=None, after_defense=None):
     arm, ball = begin_play(archive, group, order, batter, outs, seed, slot, count)
     # IsArrive maps the batter-runner's target index 1 to stadium point 10.
     base_buffer = 0x5ee000
@@ -23,6 +23,7 @@ def ground_play(archive, group, order, batter, outs, seed, slot=0, count=(0, 0),
     first_base = bytes(arm.cpu.mem_read(base_buffer, 12))
     runs = []
     positions = []
+    occupants = []
     races = {}
     frame = minimap(arm)
     attempts, holds, releases, judgments, states = [], [], [], [], []
@@ -84,6 +85,9 @@ def ground_play(archive, group, order, batter, outs, seed, slot=0, count=(0, 0),
         observe(arm, ball)
     for tick in range(1, 201):
         ended = arm.call(0xad5b4, DEFENSE)
+        occupying_runner = arm.call(0xc8528, RUNNER_MGR, 1, 1)
+        assert occupying_runner in (0, arm.word(RUNNERS))
+        occupants.append(bool(occupying_runner))
         positions.append(bytes(arm.cpu.mem_read(arm.word(RUNNERS)+0x20, 12)))
         states.append(tuple(arm.cpu.mem_read(PLAY+i, 1)[0] for i in (6, 11, 0x1e, 0x1f)))
         maps.extend(frame())
@@ -92,26 +96,25 @@ def ground_play(archive, group, order, batter, outs, seed, slot=0, count=(0, 0),
     else:
         raise RuntimeError(f'Defense did not end: group {group}, order {order}, batter {batter}, outs {outs}')
 
-    if not judgments:
-        if group == 3 and order == 2 and batter == 1:
-            assert arm.call(0xc8614, RUNNER_MGR) == 1
-            assert arm.call(0xc87fc, RUNNER_MGR, 1) == 1
-        return None, states
     # Require the batter-runner, first baseman, and original force-out call site.
-    if len(holds) != 2 or len(releases) != 1 or len(judgments) != 1:
+    if len(holds) != 2 or len(releases) != 1 or len(judgments) > 1:
         return None, states
     (pickup, fielder, pickup_site), (received, receiver, receive_site) = holds
     if not pickup_site or not receive_site or received not in races:
         return None, states
-    if receiver != 2 or judgments[0] != (received, receiver, arm.word(RUNNERS), 2, 0xa111b):
+    if receiver != 2 or (judgments and judgments[0] != (received, receiver, arm.word(RUNNERS), 2, 0xa111b)):
         return None, states
     provisional = next(i for i, state in enumerate(states, 1) if state[1] == 6)
     thrown, = releases
     assert 0 < pickup < thrown < received <= tick
-    assert states[-1] == (outs+1, 13, 1, 0)
-    assert arm.call(0xc8614, RUNNER_MGR) == 0
+    safe = not judgments
+    final_call = 6 if safe else 13
+    assert states[-1] == (outs+int(not safe), final_call, 1, 0)
+    assert arm.call(0xc8614, RUNNER_MGR) == int(safe)
+    assert arm.call(0xc8528, RUNNER_MGR, 1, 1) == (arm.word(RUNNERS) if safe else 0)
+    assert arm.call(0xc87fc, RUNNER_MGR, 2) == arm.call(0xc87fc, RUNNER_MGR, 3) == 0
     assert bytes(arm.cpu.mem_read(ATT_ENTRY+0x295, 3))[::2] == bytes((1, (slot+1) % 9))
-    assert arm.word(DEFENSE+0x18) == (25 if outs == 2 else 14)
+    assert arm.word(DEFENSE+0x18) == (25 if outs == 2 and not safe else 14)
     assert bytes(arm.cpu.mem_read(PLAY+0x142, 2)) == bytes(2)
     queries = bytearray()
     for when, who, site, disabled, args in attempts:
@@ -124,12 +127,20 @@ def ground_play(archive, group, order, batter, outs, seed, slot=0, count=(0, 0),
         queries.extend(QUERY.pack(when, stage, disabled, *args))
     initial, speed = runs[0][1:3]
     before_receipt = [r for r in runs if r[0] < received]
-    assert [r[0] for r in before_receipt] == list(range(1, received))
+    # Once safe, the ARM runner stops requesting strides. The native stride
+    # clamps to its destination for the remaining ticks before the throw.
+    assert [r[0] for r in before_receipt] == list(range(1, len(before_receipt)+1))
+    if safe:
+        assert positions[received-2] == first_base
+    else:
+        assert len(before_receipt) == received-1
     assert all(r[1][12:] == first_base and r[2] == speed and r[3] for r in before_receipt)
     assert positions[received-2] == races[received][:12]
-    run = initial + first_base + struct.pack('<I', speed)
+    run = struct.pack('<I', final_call) + initial + first_base + struct.pack('<I', speed)
     fields = (group, order, batter, outs, fielder, pickup, received, tick)
-    return (fields, provisional, thrown, bytes(queries), run, bytes(maps), positions[:received-1]), states
+    if after_defense:
+        after_defense(arm, safe)
+    return (fields, provisional, thrown, bytes(queries), run, bytes(maps), positions[:received-1], occupants), states
 
 
 def extract(apk, flights, path):
@@ -144,7 +155,7 @@ def extract(apk, flights, path):
                         play, _ = ground_play(archive, group, order, batter, outs, seed)
                         if play is None:
                             continue
-                        fields, provisional, thrown, queries, run, maps, _ = play
+                        fields, provisional, thrown, queries, run, maps, _, _ = play
                         qoff = len(payload)
                         payload.extend(queries)
                         payload.extend(run)
@@ -152,13 +163,13 @@ def extract(apk, flights, path):
                         payload.extend(maps)
                         records.append((fields, moff, provisional, thrown, len(queries)//QUERY.size, qoff))
     if not records:
-        raise ValueError('No ground outs at first observed')
+        raise ValueError('No ground plays at first observed')
     start = 8 + len(records)*RECORD.size
     table = b''.join(RECORD.pack(*fields, start+m, p, t, n, start+q) for fields, m, p, t, n, q in records)
     temp = path.with_suffix('.tmp')
-    temp.write_bytes(struct.pack('<4sI', b'GRO3', len(records)) + table + payload)
+    temp.write_bytes(struct.pack('<4sI', b'GRP4', len(records)) + table + payload)
     temp.replace(path)
-    print(f'{len(records)} empty-base ground outs through original reception and defense end.')
+    print(f'{len(records)} empty-base ground plays through original reception and defense end.')
 
 
 if __name__ == '__main__':
