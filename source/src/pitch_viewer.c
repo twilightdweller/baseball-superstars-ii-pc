@@ -8,7 +8,7 @@
 #include "batting.h"
 #include "pitch_rules.h"
 #include "batted_flight.h"
-#include "ground_out.h"
+#include "force_play.h"
 #include "ball_motion.h"
 #include <string.h>
 #include <stdlib.h>
@@ -35,7 +35,11 @@ static BS2GroundPlay ground;
 static BS2GroundDefense ground_defense;
 static const uint8_t *ground_data;
 static size_t ground_size;
-static int is_ground;
+static int is_ground, is_force;
+static BS2ForcePlay force_play;
+static BS2ForceDefense force_defense;
+static const uint8_t *force_data;
+static size_t force_size;
 static int have_field, advanced_lineup, first_preset;
 static DWORD field_started;
 static const char *const fielders[] = {"Pitcher", "Catcher", "First baseman", "Second baseman",
@@ -111,6 +115,11 @@ static const char *first_base_runner(void) {
 
 static const char *pitch_result(void) {
  if(phase==BATTED)return "Ball in play";
+ if(is_force && (phase==FIELD_COMPLETE || phase==FIELDING)){
+  if(force_defense.outs_made==2)return "Double play";
+  if(force_defense.outs_made==1)return force_play.second_tick?"Force out at second":"Ground out";
+  return "Fielding";
+ }
  if(phase==FIELD_COMPLETE || (phase==FIELDING && (at_bat.play[0xb]==13 ||
     (is_ground && ground_defense.received_tick && at_bat.first_base_slot))))
   return !is_ground?"Fly out":at_bat.first_base_slot?"Safe at first":"Ground out";
@@ -137,7 +146,16 @@ static void update_appearance(void) {
     ready=0; phase=AIM; return;
    }
    is_ground=contact_pattern>=3 && contact_pattern<=5;
-   if(at_bat.first_base_slot)have_field=0;
+   is_force=0;
+   if(at_bat.first_base_slot){
+    int lead_preset=(at_bat.first_base_slot-1)%2 ? 3-first_preset : first_preset;
+    have_field=bs2_find_force_play(force_data,force_size,contact_pattern,order,preset==1,
+                                  lead_preset==1,&at_bat,&force_play);
+    if(have_field==1){
+     is_force=1;field=force_play.field;
+     force_defense=(BS2ForceDefense){0};
+    }
+   }
    else if(is_ground){
     have_field=bs2_find_ground_play(ground_data,ground_size,contact_pattern,order,preset==1,at_bat.play[6],&ground);
     ground_defense=(BS2GroundDefense){0};
@@ -174,8 +192,10 @@ static void update_appearance(void) {
  }
  if(phase==FIELDING){
   unsigned field_tick=(now-field_started)/20u+1;
-  int next=is_ground?bs2_step_ground_play(&at_bat,&ground_defense,&ground,ground_data,ground_size,field_tick)
-                    :bs2_step_fly_out(&at_bat,&field,field_tick);
+  int next;
+  if(is_force)next=bs2_step_force_play(&at_bat,&force_defense,&force_play,force_data,force_size,field_tick);
+  else if(is_ground)next=bs2_step_ground_play(&at_bat,&ground_defense,&ground,ground_data,ground_size,field_tick);
+  else next=bs2_step_fly_out(&at_bat,&field,field_tick);
   if(next<0){ready=0;phase=AIM;}
   else if(next)phase=FIELD_COMPLETE;
  }
@@ -197,8 +217,11 @@ static void update_title(HWND window) {
  if(!taking){SetWindowTextA(window,"BS2 Pitch Motion");return;}
  if(phase==CONTACT && at_bat.first_base_slot)snprintf(detail,sizeof(detail),"Occupied-base play unresolved");
  else if(phase==CONTACT)describe_contact(detail,sizeof(detail));
- if(phase==FIELD_COMPLETE)snprintf(detail,sizeof(detail),"%s | %s",is_ground?(at_bat.first_base_slot?"Reached first":"Out at first"):fielders[field.fielder],
-  at_bat.play[6]==3?"Side retired":"Next batter ready");
+ if(phase==FIELD_COMPLETE){
+  const char *play=is_force?(force_play.second_tick?"Out at second and first":"Out at first"):fielders[field.fielder];
+  if(is_ground && !is_force)play=at_bat.first_base_slot?"Reached first":"Out at first";
+  snprintf(detail,sizeof(detail),"%s | %s",play,at_bat.play[6]==3?"Side retired":"Next batter ready");
+ }
  if(phase==COMPLETE && last_call==5 && at_bat.play[6]==3)
   snprintf(detail,sizeof(detail),"Side retired");
  if(phase==AIM && advanced_lineup && pitch_number==0)snprintf(detail,sizeof(detail),"Slot %u: %s",
@@ -220,7 +243,10 @@ static void label(int x,int y,const char *s,COLORREF color){
 }
 static void draw_defense_map(unsigned tick) {
  const uint8_t *commands;
- int count=bs2_fly_map_frame(is_ground?ground_data:fly_data,is_ground?ground_size:fly_size,&field,tick,&commands);
+ const uint8_t *map_data=is_ground?ground_data:fly_data;
+ size_t map_size=is_ground?ground_size:fly_size;
+ if(is_force){map_data=force_data;map_size=force_size;}
+ int count=bs2_fly_map_frame(map_data,map_size,&field,tick,&commands);
  RECT screen={0,0,480,320};
  FillRect(canvas,&screen,(HBRUSH)GetStockObject(BLACK_BRUSH));
  if(count<0)return;
@@ -306,7 +332,19 @@ static void render(void){
   label(12,28,info,RGB(255,205,105));
   if(phase==FIELDING || phase==FIELD_COMPLETE){
    unsigned tick=(GetTickCount()-field_started)/20u+1;
-   if(is_ground){
+   if(is_force){
+    const char *action="Pitcher tracking the ground ball.";
+    if(force_defense.possessions==1){
+     action=force_play.second_tick?"Pitcher throws to second.":"Pitcher throws to first.";
+     if(tick<force_play.throw_tick)action="Pitcher fields the grounder.";
+    }
+    if(force_defense.possessions==2){
+     action=tick<force_play.relay_tick?"Runner forced out at second.":"Second baseman throws to first.";
+     if(!force_play.second_tick)action="Out at first. Side retired.";
+    }
+    if(force_defense.possessions==3)action="Out at first. Double play.";
+    snprintf(info,sizeof(info),"%s",action);
+   }else if(is_ground){
     if(ground_defense.received_tick)snprintf(info,sizeof(info),"%s",
       at_bat.first_base_slot?"The runner beat the throw to first.":"First baseman received the throw. Out at first.");
     else if(tick>=ground.throw_tick)snprintf(info,sizeof(info),"%s throws to first.",fielders[field.fielder]);
@@ -375,6 +413,11 @@ static LRESULT CALLBACK proc(HWND window,UINT message,WPARAM w,LPARAM l){
   ground_data=(const uint8_t *)LockResource(LoadResource(instance,raw));
   ground_size=SizeofResource(instance,raw);
   if(!ground_data || !ground_size)return -1;
+  raw=FindResourceA(instance,MAKEINTRESOURCEA(109),MAKEINTRESOURCEA(10));
+  if(!raw)return -1;
+  force_data=(const uint8_t *)LockResource(LoadResource(instance,raw));
+  force_size=SizeofResource(instance,raw);
+  if(!force_data || !force_size)return -1;
   art_dc=CreateCompatibleDC(canvas);
   fields[0]=load_art(instance,FIELD_RIGHT);
   fields[1]=load_art(instance,FIELD_LEFT);
@@ -390,8 +433,9 @@ static LRESULT CALLBACK proc(HWND window,UINT message,WPARAM w,LPARAM l){
  case WM_TIMER:
   if(taking){
    enum PitchPhase previous=phase;
+   unsigned outs=at_bat.play[6], first=at_bat.first_base_slot;
    update_appearance();
-   if(previous!=phase)update_title(window);
+   if(previous!=phase || outs!=at_bat.play[6] || first!=at_bat.first_base_slot)update_title(window);
   }
   InvalidateRect(window,NULL,FALSE);return 0;
  case WM_ERASEBKGND:return 1;

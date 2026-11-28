@@ -18,7 +18,7 @@ int bs2_pitch_in_zone(const BS2Point3 *sample, const BS2Projection *camera,
 typedef struct {
     uint8_t play[0x180];
     uint8_t batting_slot, batter_reserved, reserved_slot, defense_action;
-    uint8_t first_base_slot; /* One-based practice lineup slot. Zero means first is empty. */
+    uint8_t first_base_slot, second_base_slot; /* One-based practice lineup slots. Zero means the base is empty. */
 } BS2AtBat;
 /* A generated UpdatePitch path has three extrapolated samples after the judge frame. */
 int bs2_judge_unhit_curve(BS2AtBat *at_bat, int swung, const BS2Point3 *path, size_t samples,

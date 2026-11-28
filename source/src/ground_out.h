@@ -20,6 +20,14 @@ typedef struct {
     BS2Point3 position, destination, base;
 } BS2RunnerArrival;
 
+typedef struct {
+    BS2RunnerArrival runner;
+    int32_t speed;
+} BS2BaseRun;
+
+_Static_assert(sizeof(BS2BaseRun) == 40, "first base run resource layout");
+
+void bs2_move_runner_to_base(BS2Point3 *position, const BS2Point3 *destination, int32_t speed);
 void bs2_move_runner_to_first(BS2Point3 *position, const BS2Point3 *destination, int32_t speed);
 int bs2_runner_at_base(const BS2RunnerArrival *runner);
 int bs2_find_ground_play(const uint8_t *data, size_t size, int group, unsigned order,

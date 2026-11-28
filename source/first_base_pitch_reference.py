@@ -4,31 +4,14 @@ import struct
 
 from unicorn.arm_const import UC_ARM_REG_PC, UC_ARM_REG_LR
 from extract_batted_flight import DEFENSE, GAME, PATTERNS, PLAY, SCREEN
-from extract_fly_outs import ATT_ENTRY, ATT_TEAM, DEF_TEAM, RUNNERS, RUNNER_MGR, STATS
+from extract_fly_outs import ATT_ENTRY, RUNNER_MGR, STATS, advance_batter_on_first
 
 
 def original_first_pitch(arm, safe, *, outside, result, next_ground_seed=None):
     if not safe:
         return
     cpu = arm.cpu
-    runner = arm.word(RUNNERS)
-    def first():
-        return arm.call(0xc8528, RUNNER_MGR, 1, 1)
-
-    assert first() == runner
-    slot = cpu.mem_read(ATT_ENTRY+0x32, 1)[0]
-    expected_slot = cpu.mem_read(ATT_ENTRY+0x297, 1)[0]
-    # UpdatePlayer checks the batting team's own pitcher as well as the
-    # incoming batter. Supply a real pitcher record and the imported stack guard.
-    arm.put(ATT_TEAM+0xc, 1)
-    cpu.mem_write(ATT_TEAM+0x14, bytes(cpu.mem_read(DEF_TEAM+0x14, 0x44)))
-    arm.put(0x1eb8e8, 0x614000)
-    arm.call(0xcc67c, ATT_ENTRY, 1)
-    assert cpu.mem_read(ATT_ENTRY+0x32, 1)[0] == expected_slot == (slot+1) % 9
-    assert cpu.mem_read(ATT_ENTRY+0x295, 1)[0] == 0 and first() == runner
-    arm.call(0xd7ed4, PLAY)
-    assert bytes(cpu.mem_read(PLAY+4, 2)) == bytes(2)
-
+    runner, expected_slot = advance_batter_on_first(arm)
     pitch, engine, batter, misc = 0x610000, 0x611000, 0x612000, 0x613000
     for address, value in (
         (GAME+0x1f0, engine), (engine+8, PLAY), (GAME+0x28c, batter), (GAME+0x214, STATS),
@@ -49,7 +32,7 @@ def original_first_pitch(arm, safe, *, outside, result, next_ground_seed=None):
     sample = struct.pack('<3i', (40 if outside else 0)*262144, -11*262144, -990*262144)
     cpu.mem_write(misc+0x800, sample)
     arm.call(0x169f2c, GAME)
-    assert first() == runner and arm.call(0xc8614, RUNNER_MGR) == 1
+    assert arm.call(0xc8528, RUNNER_MGR, 1, 1) == runner and arm.call(0xc8614, RUNNER_MGR) == 1
     result.update(preset=preset, sample=sample, call=cpu.mem_read(PLAY+0xb, 1)[0],
                   counts=bytes(cpu.mem_read(PLAY+4, 3)), slot=expected_slot)
     if next_ground_seed is not None:

@@ -79,3 +79,10 @@ int bs2_ball_collision(const BS2MovingBall *ball, const BS2Point3 bounds[2],
     }
     return -1;
 }
+
+int bs2_field_contact(const BS2FieldQuery *q) {
+    if (!q || q->steps != 5) return 0;
+    BS2Flight flight = {(const unsigned char *)q->samples, 3, 0};
+    BS2MovingBall ball = {&flight, 1, 0, q->disabled, {0}};
+    return bs2_ball_collision(&ball, q->bounds, q->radius, q->steps, q->max_speed, NULL) >= 0;
+}

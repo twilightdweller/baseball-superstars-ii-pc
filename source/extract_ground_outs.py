@@ -15,20 +15,8 @@ RECORD = struct.Struct('<8BIBBHI')
 QUERY = struct.Struct('<3Bx18i')
 
 
-def ground_play(archive, group, order, batter, outs, seed, slot=0, count=(0, 0), observe=None, after_defense=None):
-    arm, ball = begin_play(archive, group, order, batter, outs, seed, slot, count)
-    # IsArrive maps the batter-runner's target index 1 to stadium point 10.
-    base_buffer = 0x5ee000
-    arm.call(0x95c7c, base_buffer, FIGURE, 10)
-    first_base = bytes(arm.cpu.mem_read(base_buffer, 12))
-    runs = []
-    positions = []
-    occupants = []
-    races = {}
-    frame = minimap(arm)
-    attempts, holds, releases, judgments, states = [], [], [], [], []
-    maps = bytearray()
-    contacts = {}
+def observe_contacts(arm, ball, clock):
+    attempts, contacts = [], {}
     actor = caller = 0
 
     def defender(cpu, pc, size, context):
@@ -46,11 +34,31 @@ def ground_play(archive, group, order, batter, outs, seed, slot=0, count=(0, 0),
         samples = b''.join(arm.cpu.mem_read(ball+0x48+12*i, 12) for i in indices)
         coords = struct.unpack('<15i', samples + arm.cpu.mem_read(bounds, 24))
         disabled = arm.cpu.mem_read(ball+0x9cc, 1)[0]
-        attempts.append((tick, actor, caller, disabled, (*coords, radius, steps, arm.word(sp))))
+        attempts.append((clock(), actor, caller, disabled, (*coords, radius, steps, arm.word(sp))))
 
     def collision_return(cpu, pc, size, context):
         if cpu.reg_read(arm.regs[0]) != 0xffffffff:
-            contacts[(tick, actor)] = caller
+            contacts[(clock(), actor)] = caller
+
+    for pc, hook in ((0xa1b38, defender), (0xb8024, query), (0xa1c1a, collision_return)):
+        arm.hook(pc, hook)
+    return attempts, contacts
+
+
+def ground_play(archive, group, order, batter, outs, seed, slot=0, count=(0, 0), observe=None, after_defense=None):
+    arm, ball = begin_play(archive, group, order, batter, outs, seed, slot, count)
+    # IsArrive maps the batter-runner's target index 1 to stadium point 10.
+    base_buffer = 0x5ee000
+    arm.call(0x95c7c, base_buffer, FIGURE, 10)
+    first_base = bytes(arm.cpu.mem_read(base_buffer, 12))
+    runs = []
+    positions = []
+    occupants = []
+    races = {}
+    frame = minimap(arm)
+    holds, releases, judgments, states = [], [], [], []
+    maps = bytearray()
+    attempts, contacts = observe_contacts(arm, ball, lambda: tick)
 
     def hold(cpu, pc, size, context):
         who = arm.word(cpu.reg_read(arm.regs[0])+0x14)
@@ -78,7 +86,7 @@ def ground_play(archive, group, order, batter, outs, seed, slot=0, count=(0, 0),
         judgments.append((tick, arm.word(ai+0x14), arm.word(runner+4), base,
                           cpu.reg_read(UC_ARM_REG_LR)))
 
-    for pc, hook in ((0xa1b38, defender), (0xb8024, query), (0xa1c1a, collision_return), (0xa5ab0, hold),
+    for pc, hook in ((0xa5ab0, hold),
                      (0xb9408, release), (0xae10c, judge), (0xcf264, move_runner)):
         arm.hook(pc, hook)
     if observe:

@@ -145,6 +145,29 @@ def begin_play(archive, group, order, batter, outs, seed, slot, count):
     return arm, ball
 
 
+def advance_batter_on_first(arm):
+    cpu = arm.cpu
+    runner = arm.word(RUNNERS)
+    def first():
+        return arm.call(0xc8528, RUNNER_MGR, 1, 1)
+
+    assert first() == runner
+    slot = cpu.mem_read(ATT_ENTRY+0x32, 1)[0]
+    expected_slot = cpu.mem_read(ATT_ENTRY+0x297, 1)[0]
+    # UpdatePlayer checks the batting team's own pitcher as well as the
+    # incoming batter. Supply a real pitcher record and the imported stack guard.
+    arm.put(ATT_TEAM+0xc, 1)
+    cpu.mem_write(ATT_TEAM+0x14, bytes(cpu.mem_read(DEF_TEAM+0x14, 0x44)))
+    arm.put(0x1eb8e8, 0x614000)
+    arm.call(0xcc67c, ATT_ENTRY, 1)
+    assert cpu.mem_read(ATT_ENTRY+0x32, 1)[0] == expected_slot == (slot+1) % 9
+    assert cpu.mem_read(ATT_ENTRY+0x295, 1)[0] == 0 and first() == runner
+    arm.call(0xd7ed4, PLAY)
+    assert bytes(cpu.mem_read(PLAY+4, 2)) == bytes(2)
+
+    return runner, expected_slot
+
+
 def play(archive, group, order, batter, outs, seed, slot=0, capture=False, count=(0, 0), observe=None):
     arm, ball = begin_play(archive, group, order, batter, outs, seed, slot, count)
     events = {}

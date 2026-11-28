@@ -99,13 +99,13 @@ put(RUN+0x204, ENTRY)
 patterns = set()
 
 
-def compare(seed, swing, x, y):
+def compare(seed, swing, x, y, runner_mgr=TEAM):
     timing = {15: 100, 14: 75, 16: 75}.get(swing, 0)
     decision.clear()
     put(SEED, seed)
     u.mem_write(RESULT, bytes(32))
-    # Normal swing, no bunt or skill, empty bases, 90 pitch speed.
-    stack = [TEAM, timing, 0, x, y, 0, 0, 0, 90, 0, 0, 0, TEAM]
+    # Normal swing, no bunt or skill, 90 pitch speed.
+    stack = [runner_mgr, timing, 0, x, y, 0, 0, 0, 90, 0, 0, 0, TEAM]
     for i, value in enumerate(stack):
         put(STACK+4*i, value)
     call(0xca504, RESULT, ENTRY, TEAM, TEAM+0x1000)
@@ -164,6 +164,23 @@ for ace in (0, 1):
         compare(seed, 12 + seed % 5, 0, 0)
         checks += 1
 assert patterns == {-1} | {p+d for p in (0, 3, 9, 15, 18, 21) for d in range(3)}, patterns
+# Ara reaches first and Medica hits the return grounder using the continuing RNG.
+manager, objects, runner = 0x5a0000, 0x5a1000, 0x5a2000
+put(manager+8, objects)
+put(manager+0xc, 1)
+put(objects, runner)
+put(runner+0x8c, 1)
+assert call(0xc8528, manager, 1, 1) == runner
+for tick in (0, 1):
+    for count in ((0, 0), (1, 2)):
+        seed = 1184
+        u.mem_write(PLAY+4, bytes(count))
+        for ace, expected, mgr in ((1, 4, TEAM), (0, 3, manager)):
+            put(BATTER+0x28, ace)
+            compare(seed, tick, 0, 0, mgr)
+            assert word(RUN+0x2c0) == expected
+            seed = word(SEED)
+            checks += 1
 print(f'PASS: {checks} ARM/native swings matched the contact decision, final pattern and RNG state.')
 print('Covered misses and all 18 normal batted-ball patterns, including both sides of each tested contact threshold.')
 print('PASS: Original Swing, IsBattable, Run and GetMotion match both batters across 64 animation ticks.')

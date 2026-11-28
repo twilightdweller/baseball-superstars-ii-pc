@@ -102,7 +102,7 @@ def call(addr, *args):
 
 class AtBat(C.Structure):
     _fields_ = [('play', C.c_uint8 * 0x180), ('slot', C.c_uint8),
-                ('reserved', C.c_uint8), ('next_slot', C.c_uint8), ('defense', C.c_uint8), ('first_base_slot', C.c_uint8)]
+                ('reserved', C.c_uint8), ('next_slot', C.c_uint8), ('defense', C.c_uint8), ('first_base_slot', C.c_uint8), ('second_base_slot', C.c_uint8)]
 
 Camera, Zone, Point = C.c_int32 * 20, C.c_int32 * 4, C.c_int32 * 3
 Callback = C.CFUNCTYPE(None, C.c_void_p, C.c_int)

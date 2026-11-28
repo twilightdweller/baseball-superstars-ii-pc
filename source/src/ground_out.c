@@ -2,25 +2,11 @@
 #include "ball_motion.h"
 #include <string.h>
 
-typedef struct {
-    uint8_t tick, reception, disabled, padding;
-    BS2Point3 samples[3], bounds[2];
-    int32_t radius, steps, max_speed;
-} CollisionQuery;
-
-_Static_assert(sizeof(CollisionQuery) == 76, "ground collision resource layout");
 _Static_assert(sizeof(BS2GroundPlay) == 20, "ground play resource layout");
-
-typedef struct {
-    BS2RunnerArrival runner;
-    int32_t speed;
-} FirstBaseRun;
-
-_Static_assert(sizeof(FirstBaseRun) == 40, "first base run resource layout");
 
 /* CBBMovable::MoveNext (0xcf264), level run to first. X/Z snap within one
    speed radius. Otherwise bb_get_distance2DHV divides by |dx| + |dz|. */
-void bs2_move_runner_to_first(BS2Point3 *p, const BS2Point3 *dest, int32_t speed) {
+void bs2_move_runner_to_base(BS2Point3 *p, const BS2Point3 *dest, int32_t speed) {
     if (!p || !dest || speed <= 0) return;
     int32_t dx = (int32_t)((uint32_t)dest->x - (uint32_t)p->x);
     int32_t dz = (int32_t)((uint32_t)dest->z - (uint32_t)p->z);
@@ -36,6 +22,10 @@ void bs2_move_runner_to_first(BS2Point3 *p, const BS2Point3 *dest, int32_t speed
     int32_t z_step = (int32_t)((uint32_t)dz*(uint32_t)speed);
     p->x = (int32_t)((uint32_t)p->x + (uint32_t)(x_step/distance));
     p->z = (int32_t)((uint32_t)p->z + (uint32_t)(z_step/distance));
+}
+
+void bs2_move_runner_to_first(BS2Point3 *p, const BS2Point3 *dest, int32_t speed) {
+    bs2_move_runner_to_base(p, dest, speed);
 }
 
 int bs2_runner_at_base(const BS2RunnerArrival *runner) {
@@ -67,7 +57,7 @@ int bs2_find_ground_play(const uint8_t *data, size_t size, int group, unsigned o
             f->catch_tick >= play.throw_tick || play.throw_tick >= f->out_tick ||
             f->out_tick > f->end_tick || !play.query_count || play.query_offset < table_end ||
             f->map_offset >= size || play.query_offset > f->map_offset ||
-            play.query_count*sizeof(CollisionQuery)+sizeof(FirstBaseRun)+(legacy ? 0 : 4) != f->map_offset-play.query_offset) return -1;
+            play.query_count*sizeof(BS2FieldQuery)+sizeof(BS2BaseRun)+(legacy ? 0 : 4) != f->map_offset-play.query_offset) return -1;
         *result = play;
         return 1;
     }
@@ -78,13 +68,13 @@ int bs2_step_ground_play(BS2AtBat *ab, BS2GroundDefense *defense, const BS2Groun
                         const uint8_t *data, size_t size, unsigned tick) {
     if (!ab || !defense || !ground || !data || ab->batting_slot >= 9 ||
         !ab->play[0x11] || ab->play[0x1c] || ab->play[0x1f] ||
-        ground->query_offset > size || ground->query_count > (size-ground->query_offset)/sizeof(CollisionQuery))
+        ground->query_offset > size || ground->query_count > (size-ground->query_offset)/sizeof(BS2FieldQuery))
         return -1;
     const BS2FlyOut *field = &ground->field;
     uint8_t *p = ab->play;
     if (field->starting_outs >= 3 || p[6] != field->starting_outs + (p[0xb] == 13)) return -1;
 
-    size_t run_offset = ground->query_offset+ground->query_count*sizeof(CollisionQuery);
+    size_t run_offset = ground->query_offset+ground->query_count*sizeof(BS2FieldQuery);
     uint32_t recorded_call = 13; /* GRO3 only contained verified outs. */
     if (size < 8) return -1;
     if (!memcmp(data, "GRP4", 4)) {
@@ -93,9 +83,9 @@ int bs2_step_ground_play(BS2AtBat *ab, BS2GroundDefense *defense, const BS2Groun
         if (recorded_call != 6 && recorded_call != 13) return -1;
         run_offset += sizeof(recorded_call);
     } else if (memcmp(data, "GRO3", 4)) return -1;
-    if (ab->first_base_slot && (!defense->runner_ticks || ab->first_base_slot != ab->batting_slot+1))
+    if (ab->second_base_slot || (ab->first_base_slot && (!defense->runner_ticks || ab->first_base_slot != ab->batting_slot+1)))
         return -1;
-    FirstBaseRun run;
+    BS2BaseRun run;
     if (size-run_offset < sizeof(run) || !field->out_tick) return -1;
     memcpy(&run, data+run_offset, sizeof(run));
     if (run.speed <= 0 || run.runner.position.y || run.runner.destination.y) return -1;
@@ -113,15 +103,13 @@ int bs2_step_ground_play(BS2AtBat *ab, BS2GroundDefense *defense, const BS2Groun
     if (on_first && recorded_call == 6) ab->first_base_slot = ab->batting_slot+1;
 
     while (defense->next_query < ground->query_count) {
-        CollisionQuery q;
+        BS2FieldQuery q;
         memcpy(&q, data+ground->query_offset+defense->next_query*sizeof(q), sizeof(q));
         if (q.tick > tick) break;
-        if (q.steps != 5 || q.reception > 1 || !q.tick) return -1;
-        BS2Flight flight = {(const uint8_t *)q.samples, 3, 0};
-        BS2MovingBall ball = {&flight, 1, 0, q.disabled, {0}};
-        if (bs2_ball_collision(&ball, q.bounds, q.radius, q.steps, q.max_speed, NULL) >= 0) {
-            if (q.reception && defense->pickup_tick) defense->received_tick = q.tick;
-            if (!q.reception) defense->pickup_tick = q.tick;
+        if (q.steps != 5 || q.stage > 1 || !q.tick) return -1;
+        if (bs2_field_contact(&q)) {
+            if (q.stage && defense->pickup_tick) defense->received_tick = q.tick;
+            if (!q.stage) defense->pickup_tick = q.tick;
         }
         ++defense->next_query;
     }

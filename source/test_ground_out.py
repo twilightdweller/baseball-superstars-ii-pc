@@ -12,7 +12,7 @@ from extract_ground_outs import ORDERS, QUERY, ground_play, seed_for
 
 class AtBat(C.Structure):
     _fields_ = [('play', C.c_uint8*0x180), ('slot', C.c_uint8), ('reserved', C.c_uint8),
-                ('next_slot', C.c_uint8), ('action', C.c_uint8), ('first_base_slot', C.c_uint8)]
+                ('next_slot', C.c_uint8), ('action', C.c_uint8), ('first_base_slot', C.c_uint8), ('second_base_slot', C.c_uint8)]
 
 
 class Field(C.Structure):

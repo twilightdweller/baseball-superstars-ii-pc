@@ -47,7 +47,7 @@ int bs2_find_fly_out(const uint8_t *data, size_t size, int group, unsigned order
 }
 
 int bs2_step_fly_out(BS2AtBat *ab, const BS2FlyOut *fly, unsigned tick) {
-    if (!ab || !fly || ab->first_base_slot || ab->batting_slot >= 9 || fly->starting_outs >= 3) return -1;
+    if (!ab || !fly || ab->first_base_slot || ab->second_base_slot || ab->batting_slot >= 9 || fly->starting_outs >= 3) return -1;
     uint8_t *p = ab->play;
     if (!p[0x11] || p[0x1c] || (p[0x1f] && p[0xb] != 13) ||
         p[6] != fly->starting_outs + (p[0x1f] != 0)) return -1;

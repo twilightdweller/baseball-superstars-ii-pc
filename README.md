@@ -2,7 +2,7 @@
 
 This project is recovering the Android edition of *Baseball Superstars II* for native 64-bit Windows. The immediate goal is to play a complete baseball game as the batter, from the first pitch to the final score. The longer-term goal includes the original game modes and progression, with offline play and an optional premium-currency grant.
 
-**Playable now.** Bat as Ara or Medica against Celine. You can take pitches, swing, walk, strike out, and stay at the plate after an empty-base foul. On nine verified empty-base grounders, the defense fields the ball and throws to first. A runner who beats the throw stays on first through the next batter's pitches. A throw that beats the runner adds one out. Four fly-ball variants also play through the catch. Three outs end the practice half. Walks and contact with a runner already on first still end the connected sequence.
+**Playable now.** Bat as Ara or Medica against Celine. You can take pitches, swing, walk, strike out, or stay at the plate after an empty-base foul. Nine empty-base grounders can end in a hit or an out at first. Four fly-ball variants play through the catch. When Ara reaches first and Medica hits the supported grounder to the pitcher, the defense can turn two. With two outs the pitcher throws directly to first to end the half. The next batter inherits the count of outs and the remaining runners. Walks and other unresolved contact still end the connected sequence.
 
 ## Build and play
 
@@ -27,15 +27,17 @@ For an APK in a different folder, use `python verify_windows.py --apk "C:\Games\
 
 From the centered target, take three pitches for a called strikeout. Space brings up the next batter. For a walk, move the target right six times and take four pitches. The executable opens the pitch browser by default. The launcher opens batting practice.
 
-To try a ground-ball single, run the command below. With the target centered, press Space and immediately press X. Ara reaches first on defensive frame 30 and the throw arrives on frame 36. Press Space after the play to bring up Medica, then Space again to pitch. The count resets and the scoreboard keeps Ara on first. Use seed 46 for an out at first or seed 25 for the third baseman's fly-ball catch. Start a fresh process for each example.
+To play through a single and a double play, start a fresh process with the command below. With the target centered, press Space and immediately press X. Ara beats the throw. After the call, press Space to bring up Medica, then press Space and immediately press X again. The pitcher fields the ball, the second baseman forces Ara out, and the relay beats Medica to first. Press Space to continue with two outs and empty bases.
 
 ```powershell
-.\build\BS2-Pitch-Motion.exe --at-bat --seed 5
+.\build\BS2-Pitch-Motion.exe --at-bat --seed 1184
 ```
+
+To see the two-out decision with the same seed, start a fresh process and take two called strikeouts before swinging. The same pair of hits now ends with a direct throw to first. Seed 5 gives an opening single, seed 46 an opening ground out, and seed 25 a fly out to the third baseman.
 
 ## Milestones
 
-**Estimated completion at checkpoint 18: about 20% of the full port and 28% of the batter-game milestone.** These are engineering estimates of implementation and integration effort. The full-port estimate weights all rows below. The batter-game estimate weights the four rows from pitching through match flow, which account for 45% of the full scope. Test case counts measure coverage of individual routines. An entire nine-inning game has yet to pass an end-to-end test.
+**Estimated completion at checkpoint 19: about 21% of the full port and 29% of the batter-game milestone.** These are engineering estimates of implementation and integration effort. The full-port estimate weights all rows below. The batter-game estimate weights the four rows from pitching through match flow, which account for 45% of the full scope. Test case counts measure coverage of individual routines. An entire nine-inning game has yet to pass an end-to-end test.
 
 | Milestone | Share of full port | Estimated complete | What works and what is next |
 | --- | ---: | ---: | --- |
@@ -43,20 +45,22 @@ To try a ground-ball single, run the command below. With the target centered, pr
 | Graphics, startup and menus | 10% | 30% | Sprite decoding, title-state transitions, a menu preview and two batting views work. The menu still needs to launch a match. |
 | Pitching and pitch judgment | 8% | 65% | The port reproduces curve geometry, release positions, camera projection, strike-zone checks and ordinary calls. Pitcher AI, delivery animation and live speed modifiers remain. |
 | Batting and contact | 6% | 50% | Two batters can take or swing with recovered timing, matchup abilities, original frames and batted-ball paths. Other roster matchups, bunts and special swings remain. |
-| Fielding and baserunning | 16% | 17% | Native C resolves the race to first and tracks the runner who reached safely. The build records fielder decisions and throws. Force plays at second and advancement on occupied-base hits remain open. |
-| Rosters, opposing turns and match flow | 15% | 11% | Outs, the batting order and a runner on first carry into the next appearance. Three outs end the half. A full lineup, scoring across innings and opposing turns remain open. |
+| Fielding and baserunning | 16% | 19% | Native C advances two runners and resolves force outs at second and first on one occupied-base grounder. The build records fielder decisions and throws. Other occupied-base hits and runner controls remain open. |
+| Rosters, opposing turns and match flow | 15% | 12% | Singles, strikeouts and the supported double play carry the correct outs and bases into the next appearance or end the half. Full lineups, scoring across innings and opposing turns remain open. |
 | Original game modes, saves and progression | 28% | 0% | The currency encoding and optional grant have isolated tests. Playable modes, team progression and save/load integration remain. |
 | Audio, input, presentation and release testing | 12% | 0% | Practice uses Windows keyboard and mouse controls. Game audio, final presentation and release compatibility testing remain. |
 
-The next acceptance test starts with a runner on first. On a second grounder, Windows must move both runners, reproduce the original fielder's choice of base and record who is safe or out. The next batter must inherit the resulting bases and outs. The full-game milestone also requires opposing turns and the original game-over rules.
+The next acceptance test is a four-ball walk with a runner on first. The batter should take first, the existing runner should reach second, and the next batter should inherit both runners with the same outs and score. A full batter game also requires runs, opposing turns and the original game-over rules.
 
 ## Implementation and verification
 
 The Windows gameplay and renderer are C11 using Win32 and GDI. Python extracts the APK data, builds the native targets, and compares their behavior against individual original ARM routines running in Unicorn. The Windows executable runs independently of Python, Unicorn and Android.
 
-The ground-play comparison covers 39 outs and 15 safe finishes across both batters and all three starting out counts. It checks 2,389 defensive frames, including first-base occupancy on every tick. For every safe finish, the APK switches batters and judges the following pitch while the original runner manager stays active. Windows also plays this sequence through keyboard input. The suite retains the 24 fly-out cases, 6,518 original collision queries and 53,906 batted-ball motion updates.
+The occupied-base test compares six original plays across all three starting out counts, two earlier single variants, different counts and lineup slots. It checks both runner paths, collisions, possession, base occupancy, outs and minimap draws over 280 defensive frames. The Windows input test plays a single followed by the double play and a pitch to the next batter. It also plays the two-out version through the end of the half.
 
-The batting build uses a fixed matchup and a 20 ms display step. For all 1,232 supported stadium trajectories, the build records the original generator's output, including fence rebounds for its recorded random state. Native C advances the ball through those positions. For fielding, the build runs the nine original fielder AIs and the batter-runner, collecting their minimap draws, candidate collision inputs, throw timing and each batter's starting position, destination and speed. On supported grounders, Windows moves the runner each tick, evaluates both ball contacts and resolves the race to first. The stored ending guards against displaying a minimap for a different result. Pursuit and throw generation still run at extraction time. The practice lineup alternates the two batters.
+The earlier comparisons cover 39 ground outs, 15 safe finishes, 24 fly outs, 6,518 original collision calls and 53,906 batted-ball motion updates. In all 15 safe finishes, the original runner and the native runner stayed on first through the following batter's first pitch.
+
+The batting build uses a fixed matchup and a 20 ms display step. For all 1,232 supported stadium trajectories, the build records the original generator's output, including fence rebounds for its recorded random state. Native C advances the ball through those positions. For fielding, the build runs the nine original fielder AIs and the batter-runner, collecting their minimap draws, candidate collision inputs, throw timing and each batter's starting position, destination and speed. On supported grounders, Windows moves the runners each tick and checks whether a fielder receives the ball before the forced runner reaches the bag. The stored ending guards against displaying a minimap for a different result. Pursuit and throw generation still run at extraction time. The practice lineup alternates the two batters.
 
 | Location | Contents |
 | --- | --- |
@@ -66,4 +70,4 @@ The batting build uses a fixed matchup and a 20 ms display step. For all 1,232 s
 | `verify_windows.py` | Build and verification entry point; detailed results go into `build/` |
 | `source/CHECKPOINT-*.md` | Recovery notes, original routine addresses and test boundaries |
 
-The most recent recovery notes cover [safe at first and the next pitch](source/CHECKPOINT-18.md), [ground outs and native collision](source/CHECKPOINT-17.md), [fielding and the next batter](source/CHECKPOINT-16.md), [ball flight and foul judgment](source/CHECKPOINT-15.md), [swing timing and contact selection](source/CHECKPOINT-14.md), [batter artwork and handedness](source/CHECKPOINT-13.md), and [taken-pitch plate appearances](source/CHECKPOINT-12.md).
+The most recent recovery notes cover [the double play and two-out throw](source/CHECKPOINT-19.md), [safe at first and the next pitch](source/CHECKPOINT-18.md), [ground outs and native collision](source/CHECKPOINT-17.md), [fielding and the next batter](source/CHECKPOINT-16.md), [ball flight and foul judgment](source/CHECKPOINT-15.md), [swing timing and contact selection](source/CHECKPOINT-14.md), [batter artwork and handedness](source/CHECKPOINT-13.md), and [taken-pitch plate appearances](source/CHECKPOINT-12.md).
